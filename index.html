@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Technician — Job Tracker</title>
+<style>
+  :root{
+    --primary:#1f6feb; --primary-dark:#164b9e; --bg:#f4f6f9; --card:#ffffff;
+    --text:#1c2530; --muted:#6b7684; --border:#e1e6ec;
+    --success:#1e8e5a; --success-bg:#e6f6ee; --warn:#b8860b; --warn-bg:#fff4e0;
+    --grey-bg:#eef1f5; --danger:#c62828;
+    --input-bg:#fafbfc; --hover-bg:#fafbfc; --danger-bg:#fdeaea; --selected-bg:#eef4fe;
+    --skeleton-base:#e8ecf1; --skeleton-highlight:#f6f8fa;
+    --shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  :root[data-theme="dark"]{
+    --primary:#4c8dff; --primary-dark:#3a72d9; --bg:#10151b; --card:#1a212a;
+    --text:#e7ebef; --muted:#8b95a1; --border:#2a323d;
+    --success:#3ddc97; --success-bg:#123425; --warn:#e0b34d; --warn-bg:#3a2f10;
+    --grey-bg:#232b34; --danger:#ff6b6b;
+    --input-bg:#12181f; --hover-bg:#1f2731; --danger-bg:#3a1414; --selected-bg:#1c2a3d;
+    --skeleton-base:#232b34; --skeleton-highlight:#2e3844;
+    --shadow:0 1px 3px rgba(0,0,0,.3);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s ease, color .2s ease;}
+  .card, input, select, button, .job-row{ transition:background .2s ease, border-color .2s ease, color .2s ease; }
+  @keyframes shimmer{ 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
+  .skeleton{
+    display:inline-block; border-radius:6px; color:transparent !important;
+    background:linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-highlight) 37%, var(--skeleton-base) 63%);
+    background-size:400px 100%; animation:shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+  .fade-in{ animation:fadeIn .25s ease both; }
+  .theme-toggle{
+    position:fixed; top:16px; right:16px; width:44px; height:44px; border-radius:50%;
+    background:var(--card); border:1px solid var(--border); box-shadow:var(--shadow);
+    font-size:1.15rem; display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:500; padding:0; margin:0;
+  }
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px;}
+  h1{font-size:1.25rem;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:.9rem;margin-bottom:20px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  label{display:block;font-size:.85rem;color:var(--muted);margin:12px 0 6px;}
+  input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:1rem;background:var(--input-bg);color:var(--text);}
+  input:focus,select:focus{outline:2px solid var(--primary);border-color:var(--primary);}
+  button{width:100%;padding:14px;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;margin-top:16px;transition:opacity .15s;}
+  button:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-primary{background:var(--primary);color:#fff;}
+  .btn-primary:hover:not(:disabled){background:var(--primary-dark);}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:8px;}
+  .error{color:var(--danger);font-size:.85rem;margin-top:8px;min-height:1em;}
+  .status-pill{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+  .pill-started{background:var(--warn-bg);color:var(--warn);}
+  .pill-reached{background:var(--success-bg);color:var(--success);}
+  .pill-completed{background:var(--grey-bg);color:var(--muted);}
+  .pill-cancelled{background:var(--danger-bg);color:var(--danger);}
+  .job-number{font-size:1.3rem;font-weight:700;letter-spacing:.5px;margin:6px 0;}
+  .meta-row{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);margin:4px 0;}
+  .meta-row b{color:var(--text);font-weight:600;}
+  .hidden{display:none !important;}
+  .top-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .logout{font-size:.85rem;color:var(--primary);background:none;border:none;width:auto;padding:0;margin:0;cursor:pointer;}
+  .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .job-row{display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .job-row:last-child{border-bottom:none;}
+  .job-row:hover{background:var(--hover-bg);}
+  .job-row.selected{background:var(--selected-bg);}
+  .job-row-left{display:flex;flex-direction:column;gap:2px;}
+  .job-row-left b{font-size:.95rem;}
+  .job-row-left span{font-size:.8rem;color:var(--muted);}
+  .empty-note{color:var(--muted);font-size:.9rem;padding:8px 0;}
+  #detailPanel h2{font-size:1rem;margin:0 0 4px;}
+  .detail-close{float:right;background:none;border:none;font-size:1.2rem;color:var(--muted);width:auto;padding:0;cursor:pointer;}
+  .section-title{font-size:.85rem;color:var(--muted);font-weight:600;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.03em;}
+  .thumb{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin:4px 4px 0 0;}
+  .bill-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+  .bill-item:last-child{border-bottom:none;}
+  .fund-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+  .fund-item:last-child{border-bottom:none;}
+  .status-row{display:flex;gap:8px;align-items:center;margin-top:10px;}
+  .status-row select{flex:1;margin:0;}
+  .status-row button{width:auto;margin:0;padding:12px 16px;}
+  .config-banner{background:#fff4e0;border:1px solid #f2d59b;color:#7a5b00;font-size:.85rem;padding:10px 14px;border-radius:10px;margin-bottom:16px;}
+</style>
+</head>
+<body>
+<button id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+<div class="wrap">
+
+  <div id="configBanner" class="config-banner hidden">
+    ⚠️ Set <code>WEB_APP_URL</code> at the top of the script section in this file to your deployed
+    Apps Script Web App URL (ends in <code>/exec</code>) before using this page.
+  </div>
+
+  <div id="loginView">
+    <h1>Technician Login</h1>
+    <p class="sub">Field Service Job Tracker</p>
+    <div class="card">
+      <label>Username</label>
+      <input id="loginUsername" autocomplete="username" />
+      <label>Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" />
+      <button class="btn-primary" id="loginBtn">Log in</button>
+      <div class="error" id="loginError"></div>
+    </div>
+  </div>
+
+  <div id="appView" class="hidden">
+    <div class="top-bar">
+      <div>
+        <h1 id="techName" style="margin:0;">—</h1>
+        <span class="sub" style="display:block;">Technician</span>
+      </div>
+      <button class="logout" id="logoutBtn">Log out</button>
+    </div>
+
+    <div id="permissionsBanner" class="config-banner hidden"></div>
+
+    <div class="card">
+      <h2 style="font-size:1rem;margin-top:0;">Start a new job</h2>
+      <label>Select branch (accounts)</label>
+      <select id="branchSelect"></select>
+      <label>Select site</label>
+      <select id="siteSelect"></select>
+      <button class="btn-primary" id="startBtn">Start Job</button>
+      <div class="error" id="startError"></div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:1rem;margin-top:0;">My jobs</h2>
+      <div id="jobsList"><div class="empty-note">No jobs yet.</div></div>
+    </div>
+
+    <div class="card hidden" id="detailPanel">
+      <button class="detail-close" id="closeDetailBtn">&times;</button>
+      <span class="status-pill pill-started" id="detailStatusPill">STARTED</span>
+      <div class="job-number" id="detailJobNumber">—</div>
+      <div class="meta-row"><span>Branch</span><b id="detailBranchName">—</b></div>
+      <div class="meta-row"><span>Site</span><b id="detailSiteName">—</b></div>
+      <div class="meta-row"><span>Started at</span><b id="detailStartTime">—</b></div>
+      <div class="meta-row hidden" id="detailReachedRow"><span>Reached at</span><b id="detailReachTime">—</b></div>
+      <div class="meta-row hidden" id="detailGpsRow"><span>GPS distance</span><b id="detailGpsDistance">—</b></div>
+
+      <div class="status-row">
+        <select id="statusSelect">
+          <option value="started">Started</option>
+          <option value="reached">Reached</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <button class="btn-primary" id="updateStatusBtn" style="margin:0;">Update</button>
+      </div>
+      <div class="error" id="statusError"></div>
+
+      <div class="hidden" id="actualDistanceBlock">
+        <label>Actual distance travelled (km) — optional, overrides GPS if entered</label>
+        <input id="actualDistanceInput" type="number" step="0.1" min="0" placeholder="e.g. 12.5" />
+        <button class="btn-ghost" id="saveActualDistanceBtn">Save actual distance</button>
+        <div class="error" id="actualDistanceError"></div>
+      </div>
+
+      <div class="section-title">Job photos</div>
+      <input type="file" id="photoInput" accept="image/*" multiple />
+      <button class="btn-primary" id="uploadPhotosBtn">Upload photo(s)</button>
+      <div class="error" id="photosError"></div>
+      <div id="photosGrid" style="display:flex;flex-wrap:wrap;margin-top:12px;"></div>
+
+      <div class="section-title">Purchases / bills</div>
+      <label>Amount (Rs.)</label>
+      <input id="billAmountInput" type="number" step="0.01" min="0" placeholder="e.g. 1500" />
+      <label>Description (optional)</label>
+      <input id="billDescInput" placeholder="e.g. CAT6 cable, 10m" />
+      <label>Receipt photo (optional)</label>
+      <input type="file" id="billPhotoInput" accept="image/*" />
+      <button class="btn-primary" id="addBillBtn">Add bill</button>
+      <div class="error" id="billsError"></div>
+      <div id="billsList" style="margin-top:8px;"></div>
+
+      <div class="section-title">Fund given (by admin)</div>
+      <div id="fundsList" class="sub">No funds recorded yet.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+ * CONFIG — paste your deployed Apps Script Web App URL here.
+ * Deploy -> New deployment -> Web app -> copy the URL ending in /exec.
+ * ===================================================================== */
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz1QlBqThpiSHjnQbIIfoN52_pOgEO8EYkXzt3e9xe9WqHhT1wQ-Yi51k02Xn4ypWsk/exec"; // e.g. "https://script.google.com/macros/s/AKfycbxxxxxxxx/exec"
+
+/* ---------- gsRun: calls the Apps Script Web App backend over HTTP ----------
+ * Uses Content-Type: text/plain to avoid a CORS preflight request, since
+ * Apps Script web apps don't handle OPTIONS requests. The server (doPost
+ * in Code.gs) still parses the body as JSON regardless of this header. */
+function gsRun(fnName, ...args){
+  return fetch(WEB_APP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ fn: fnName, args: args })
+  })
+  .then(res => {
+    if(!res.ok) throw new Error('Network error: ' + res.status);
+    return res.json();
+  })
+  .then(data => {
+    if(!data.ok) throw new Error(data.error || 'Request failed.');
+    return data.result;
+  });
+}
+// Bill receipts are stored as bare Drive file IDs (see note in loadPhotos).
+// Open a blank tab immediately (so popup blockers don't catch it), then
+// fill it in once the image data arrives.
+async function openReceipt(fileId){
+  const win = window.open('', '_blank');
+  try{
+    const dataUrl = await gsRun('getFileDataUrl', fileId);
+    if(win) win.document.write(`<title>Receipt</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100vh;" /></body>`);
+  } catch(e){
+    if(win) win.document.write('Could not load receipt.');
+  }
+}
+/* ---------- Dark mode ---------- */
+const THEME_KEY = 'jobtracker-theme';
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  const btn = document.getElementById('themeToggle');
+  if(btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem(THEME_KEY, theme);
+}
+(function initTheme(){
+  const saved = localStorage.getItem(THEME_KEY);
+  const theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(theme);
+})();
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+
+/* ---------- Skeleton loading placeholders ---------- */
+function skeletonJobRows(count){
+  let out = '';
+  for(let i = 0; i < count; i++){
+    out += `
+      <div class="job-row">
+        <div class="job-row-left">
+          <div class="skeleton" style="height:14px;width:110px;margin-bottom:6px;">&nbsp;</div>
+          <div class="skeleton" style="height:11px;width:160px;">&nbsp;</div>
+        </div>
+        <div class="skeleton" style="height:20px;width:70px;border-radius:20px;">&nbsp;</div>
+      </div>`;
+  }
+  return out;
+}
+function skeletonLines(count){
+  let out = '';
+  for(let i = 0; i < count; i++){
+    const w = 50 + Math.floor(Math.random() * 40);
+    out += `<div class="skeleton" style="height:14px;width:${w}%;margin:8px 0;">&nbsp;</div>`;
+  }
+  return out;
+}
+function skeletonThumbs(count){
+  let out = '';
+  for(let i = 0; i < count; i++){
+    out += `<div class="skeleton" style="width:72px;height:72px;border-radius:8px;display:inline-block;margin:4px 4px 0 0;">&nbsp;</div>`;
+  }
+  return out;
+}
+
+function fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// FIX (upload failing with a "macros/echo ... 404" error): raw camera
+// photos can easily be several MB each, and base64-encoding adds another
+// ~33% on top. Apps Script's web app POST endpoint silently fails on
+// oversized/slow requests — the browser sees it as a 404 on the redirect
+// Apps Script itself uses to serve responses. Shrinking the image in the
+// browser before upload (resize + re-compress as JPEG) keeps requests
+// small and reliable, and also makes photos load faster afterwards, since
+// viewing a photo now round-trips it as base64 too (see loadPhotos).
+function compressImage(file, maxDim = 1600, quality = 0.75){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          if(width > height){ height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' });
+      };
+      img.onerror = () => reject(new Error('Could not read image.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+if(WEB_APP_URL.indexOf('PASTE_YOUR_WEB_APP_URL_HERE') !== -1){
+  document.getElementById('configBanner').classList.remove('hidden');
+}
+
+const loginView = document.getElementById('loginView');
+const appView = document.getElementById('appView');
+const loginBtn = document.getElementById('loginBtn');
+const loginError = document.getElementById('loginError');
+const logoutBtn = document.getElementById('logoutBtn');
+const techNameEl = document.getElementById('techName');
+
+const branchSelect = document.getElementById('branchSelect');
+const siteSelect = document.getElementById('siteSelect');
+const startBtn = document.getElementById('startBtn');
+const startError = document.getElementById('startError');
+
+const jobsList = document.getElementById('jobsList');
+
+const detailPanel = document.getElementById('detailPanel');
+const closeDetailBtn = document.getElementById('closeDetailBtn');
+const detailStatusPill = document.getElementById('detailStatusPill');
+const detailJobNumber = document.getElementById('detailJobNumber');
+const detailBranchName = document.getElementById('detailBranchName');
+const detailSiteName = document.getElementById('detailSiteName');
+const detailStartTime = document.getElementById('detailStartTime');
+const detailReachedRow = document.getElementById('detailReachedRow');
+const detailReachTime = document.getElementById('detailReachTime');
+const detailGpsRow = document.getElementById('detailGpsRow');
+const detailGpsDistance = document.getElementById('detailGpsDistance');
+
+const statusSelect = document.getElementById('statusSelect');
+const updateStatusBtn = document.getElementById('updateStatusBtn');
+const statusError = document.getElementById('statusError');
+
+const actualDistanceBlock = document.getElementById('actualDistanceBlock');
+const actualDistanceInput = document.getElementById('actualDistanceInput');
+const saveActualDistanceBtn = document.getElementById('saveActualDistanceBtn');
+const actualDistanceError = document.getElementById('actualDistanceError');
+
+const photoInput = document.getElementById('photoInput');
+const uploadPhotosBtn = document.getElementById('uploadPhotosBtn');
+const photosError = document.getElementById('photosError');
+const photosGrid = document.getElementById('photosGrid');
+
+const billAmountInput = document.getElementById('billAmountInput');
+const billDescInput = document.getElementById('billDescInput');
+const billPhotoInput = document.getElementById('billPhotoInput');
+const addBillBtn = document.getElementById('addBillBtn');
+const billsError = document.getElementById('billsError');
+const billsList = document.getElementById('billsList');
+
+const fundsList = document.getElementById('fundsList');
+
+let technician = null;
+let jobsCache = [];
+let selectedJob = null;
+
+function getSession(){ const raw = sessionStorage.getItem('technician'); return raw ? JSON.parse(raw) : null; }
+function setSession(t){ sessionStorage.setItem('technician', JSON.stringify(t)); }
+function clearSession(){ sessionStorage.removeItem('technician'); }
+function fmtTime(ts){
+  if(!ts) return '—';
+  return new Date(ts).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function getLocation(){
+  return new Promise((resolve, reject) => {
+    if(!navigator.geolocation){ reject(new Error('Geolocation not supported on this device/browser')); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      err => reject(new Error('Could not get location: ' + err.message)),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  });
+}
+
+// Ask for the device permissions this app needs, right after login, instead
+// of waiting until the technician is mid-task (e.g. tapping "Start Job" and
+// only then finding out location is blocked). Runs once per login/session.
+// Note: there's no separate browser "storage" permission prompt to trigger
+// here — choosing a photo (the file input) is handled by the OS's own
+// picker with no JS-triggerable prompt. navigator.storage.persist() is the
+// closest equivalent (keeps uploaded-but-not-yet-synced data from being
+// evicted); some browsers silently grant it, some prompt, some ignore it.
+async function requestDevicePermissions(){
+  const banner = document.getElementById('permissionsBanner');
+  const warnings = [];
+
+  // Location — needed for Start Job / Reach Site GPS capture.
+  try{
+    await getLocation();
+  } catch(e){
+    warnings.push('Location access is blocked or unavailable — starting a job and GPS distance won\'t work until it\'s allowed in your browser/site settings.');
+  }
+
+  // Best-effort persistent storage, so an in-progress upload is less likely
+  // to be cleared by the browser under storage pressure. Safe to ignore if
+  // unsupported or if it silently does nothing.
+  try{
+    if(navigator.storage && navigator.storage.persist){ await navigator.storage.persist(); }
+  } catch(e){ /* not critical — ignore */ }
+
+  if(warnings.length){
+    banner.innerHTML = '⚠️ ' + warnings.join('<br>⚠️ ');
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+function setLoading(btn, loading, label){
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>Working…' : label;
+}
+
+/* ---------- Login ---------- */
+loginBtn.addEventListener('click', async () => {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  loginError.textContent = '';
+  if(!username || !password){ loginError.textContent = 'Enter username and password.'; return; }
+  setLoading(loginBtn, true, 'Log in');
+  try{
+    const result = await gsRun('loginUser', username, password);
+    if(!result){ loginError.textContent = 'Invalid username or password.'; return; }
+    technician = result;
+    setSession(technician);
+    enterApp();
+  } catch(e){
+    loginError.textContent = e.message || 'Login failed.';
+  } finally {
+    setLoading(loginBtn, false, 'Log in');
+  }
+});
+
+logoutBtn.addEventListener('click', () => {
+  clearSession();
+  technician = null;
+  selectedJob = null;
+  appView.classList.add('hidden');
+  loginView.classList.remove('hidden');
+});
+
+/* ---------- Start job dropdowns ---------- */
+async function loadSites(){
+  const sites = (await gsRun('listSites')).filter(s => s.active);
+  siteSelect.innerHTML = sites.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+}
+async function loadBranches(){
+  const branches = (await gsRun('listBranches')).filter(b => b.active);
+  branchSelect.innerHTML = branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+}
+
+startBtn.addEventListener('click', async () => {
+  startError.textContent = '';
+  const siteId = siteSelect.value;
+  const branchId = branchSelect.value;
+  if(!branchId){ startError.textContent = 'Choose a branch.'; return; }
+  if(!siteId){ startError.textContent = 'Choose a site.'; return; }
+  setLoading(startBtn, true, 'Start Job');
+  try{
+    const loc = await getLocation();
+    await gsRun('startJob', technician.id, siteId, branchId, loc.lat, loc.lng);
+    await loadJobsList();
+    if(jobsCache.length) openDetail(jobsCache[0]);
+  } catch(e){
+    startError.textContent = e.message || 'Could not start job.';
+  } finally {
+    setLoading(startBtn, false, 'Start Job');
+  }
+});
+
+/* ---------- Job list ---------- */
+async function loadJobsList(){
+  jobsList.innerHTML = skeletonJobRows(3);
+  try{
+    const jobs = await gsRun('listJobsForTechnician', technician.id);
+    jobsCache = jobs;
+    if(jobs.length === 0){ jobsList.innerHTML = '<div class="empty-note fade-in">No jobs yet.</div>'; return; }
+    jobsList.innerHTML = jobs.map(j => `
+      <div class="job-row fade-in ${selectedJob && selectedJob.id === j.id ? 'selected' : ''}" data-job-id="${j.id}">
+        <div class="job-row-left">
+          <b>${j.job_number}</b>
+          <span>${j.branch_name ? j.branch_name + ' · ' : ''}${j.site_name} · ${fmtTime(j.start_time)}</span>
+        </div>
+        <span class="status-pill pill-${j.status}">${j.status.toUpperCase()}</span>
+      </div>
+    `).join('');
+    jobsList.querySelectorAll('.job-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const job = jobsCache.find(j => j.id === row.dataset.jobId);
+        if(job) openDetail(job);
+      });
+    });
+  } catch(e){
+    jobsList.innerHTML = '<div class="empty-note">Could not load jobs.</div>';
+  }
+}
+
+/* ---------- Detail panel ---------- */
+function openDetail(job){
+  selectedJob = job;
+  detailPanel.classList.remove('hidden');
+  renderJobsListHighlight();
+  renderDetail();
+  loadPhotos();
+  loadBills();
+  loadFunds();
+  detailPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function renderJobsListHighlight(){
+  jobsList.querySelectorAll('.job-row').forEach(row => {
+    row.classList.toggle('selected', selectedJob && row.dataset.jobId === selectedJob.id);
+  });
+}
+closeDetailBtn.addEventListener('click', () => {
+  selectedJob = null;
+  detailPanel.classList.add('hidden');
+  renderJobsListHighlight();
+});
+
+function renderDetail(){
+  const j = selectedJob;
+  detailJobNumber.textContent = j.job_number;
+  detailBranchName.textContent = j.branch_name || '—';
+  detailSiteName.textContent = j.site_name || '—';
+  detailStartTime.textContent = fmtTime(j.start_time);
+  detailStatusPill.textContent = j.status.toUpperCase();
+  detailStatusPill.className = 'status-pill pill-' + j.status;
+  statusSelect.value = j.status;
+
+  if(j.reach_time){
+    detailReachedRow.classList.remove('hidden');
+    detailReachTime.textContent = fmtTime(j.reach_time);
+  } else {
+    detailReachedRow.classList.add('hidden');
+  }
+  if(j.gps_distance_km != null){
+    detailGpsRow.classList.remove('hidden');
+    detailGpsDistance.textContent = j.gps_distance_km.toFixed(2) + ' km';
+  } else {
+    detailGpsRow.classList.add('hidden');
+  }
+  if(j.status === 'reached' || j.status === 'completed'){
+    actualDistanceBlock.classList.remove('hidden');
+    actualDistanceInput.value = j.actual_distance_km != null ? j.actual_distance_km : '';
+  } else {
+    actualDistanceBlock.classList.add('hidden');
+  }
+  statusError.textContent = '';
+}
+
+updateStatusBtn.addEventListener('click', async () => {
+  statusError.textContent = '';
+  const newStatus = statusSelect.value;
+  setLoading(updateStatusBtn, true, 'Update');
+  try{
+    if(newStatus === 'reached' && selectedJob.status !== 'reached'){
+      const loc = await getLocation();
+      await gsRun('reachSite', selectedJob.id, loc.lat, loc.lng);
+    } else {
+      await gsRun('setJobStatus', selectedJob.id, newStatus);
+    }
+    await loadJobsList();
+    const refreshed = jobsCache.find(j => j.id === selectedJob.id);
+    if(refreshed) openDetail(refreshed);
+  } catch(e){
+    statusError.textContent = e.message || 'Could not update status.';
+  } finally {
+    setLoading(updateStatusBtn, false, 'Update');
+  }
+});
+
+saveActualDistanceBtn.addEventListener('click', async () => {
+  actualDistanceError.textContent = '';
+  const val = actualDistanceInput.value.trim();
+  if(val === ''){ actualDistanceError.textContent = 'Enter a distance in km.'; return; }
+  const km = parseFloat(val);
+  if(isNaN(km) || km < 0){ actualDistanceError.textContent = 'Enter a valid number.'; return; }
+  setLoading(saveActualDistanceBtn, true, 'Save actual distance');
+  try{
+    await gsRun('setActualDistance', selectedJob.id, km);
+    await loadJobsList();
+    const refreshed = jobsCache.find(j => j.id === selectedJob.id);
+    if(refreshed) selectedJob = refreshed;
+  } catch(e){
+    actualDistanceError.textContent = e.message || 'Could not save.';
+  } finally {
+    setLoading(saveActualDistanceBtn, false, 'Save actual distance');
+  }
+});
+
+/* ---------- Photos ---------- */
+async function loadPhotos(){
+  photosGrid.innerHTML = skeletonThumbs(3);
+  try{
+    const photos = await gsRun('listJobPhotos', selectedJob.id);
+    if(photos.length === 0){ photosGrid.innerHTML = ''; return; }
+    // Photos are stored as bare Drive file IDs, not URLs — each one is
+    // fetched as a data: URI over the same JSON API as everything else,
+    // since Apps Script web apps can't serve a raw file link directly.
+    const dataUrls = await Promise.all(photos.map(p => gsRun('getFileDataUrl', p.url).catch(() => null)));
+    photosGrid.innerHTML = dataUrls.map(src => src ? `<img class="thumb fade-in" src="${src}" alt="job photo" />` : '').join('');
+  } catch(e){ photosGrid.innerHTML = ''; }
+}
+uploadPhotosBtn.addEventListener('click', async () => {
+  photosError.textContent = '';
+  const files = photoInput.files;
+  if(!files || files.length === 0){ photosError.textContent = 'Choose at least one photo.'; return; }
+  setLoading(uploadPhotosBtn, true, 'Upload photo(s)');
+  try{
+    for(const file of files){
+      const { base64, mimeType } = await compressImage(file);
+      await gsRun('uploadJobPhoto', selectedJob.id, base64, file.name.replace(/\.[^.]+$/, '') + '.jpg', mimeType);
+    }
+    photoInput.value = '';
+    await loadPhotos();
+  } catch(e){
+    photosError.textContent = e.message || 'Upload failed.';
+  } finally {
+    setLoading(uploadPhotosBtn, false, 'Upload photo(s)');
+  }
+});
+
+/* ---------- Bills ---------- */
+async function loadBills(){
+  billsList.innerHTML = skeletonLines(2);
+  try{
+    const bills = await gsRun('listJobBills', selectedJob.id);
+    if(bills.length === 0){ billsList.innerHTML = '<div class="sub fade-in">No bills added yet.</div>'; return; }
+    billsList.innerHTML = bills.map(b => `
+      <div class="bill-item fade-in">
+        <span>${b.description || 'Purchase'} — Rs. ${Number(b.amount).toFixed(2)}</span>
+        ${b.url ? `<a href="#" onclick="openReceipt('${b.url}'); return false;">Receipt</a>` : ''}
+      </div>
+    `).join('');
+  } catch(e){ billsList.innerHTML = ''; }
+}
+addBillBtn.addEventListener('click', async () => {
+  billsError.textContent = '';
+  const amountVal = billAmountInput.value.trim();
+  if(amountVal === ''){ billsError.textContent = 'Enter an amount.'; return; }
+  const amount = parseFloat(amountVal);
+  if(isNaN(amount) || amount < 0){ billsError.textContent = 'Enter a valid amount.'; return; }
+  setLoading(addBillBtn, true, 'Add bill');
+  try{
+    let base64 = null, filename = '', mimeType = '';
+    const file = billPhotoInput.files[0];
+    if(file){ const c = await compressImage(file); base64 = c.base64; mimeType = c.mimeType; filename = file.name.replace(/\.[^.]+$/, '') + '.jpg'; }
+    await gsRun('addJobBill', selectedJob.id, amount, billDescInput.value.trim() || null, base64, filename, mimeType);
+    billAmountInput.value = ''; billDescInput.value = ''; billPhotoInput.value = '';
+    await loadBills();
+  } catch(e){
+    billsError.textContent = e.message || 'Could not add bill.';
+  } finally {
+    setLoading(addBillBtn, false, 'Add bill');
+  }
+});
+
+/* ---------- Funds (read-only) ---------- */
+async function loadFunds(){
+  fundsList.innerHTML = skeletonLines(2);
+  try{
+    const funds = await gsRun('listJobFunds', selectedJob.id);
+    if(funds.length === 0){ fundsList.innerHTML = '<span class="fade-in">No funds recorded yet.</span>'; return; }
+    fundsList.innerHTML = funds.map(f => `
+      <div class="fund-item fade-in">
+        <b>Rs. ${Number(f.amount).toFixed(2)}</b> — ${f.note || 'No note'}
+        <div class="sub">${fmtTime(f.created_at)}</div>
+      </div>
+    `).join('');
+  } catch(e){ fundsList.innerHTML = 'Could not load funds.'; }
+}
+
+/* ---------- Boot ---------- */
+async function enterApp(){
+  loginView.classList.add('hidden');
+  appView.classList.remove('hidden');
+  techNameEl.textContent = technician.name;
+  requestDevicePermissions(); // fire-and-forget — shows browser prompts, doesn't block the UI
+  await loadBranches();
+  await loadSites();
+  await loadJobsList();
+}
+
+(function init(){
+  const existing = getSession();
+  if(existing){ technician = existing; enterApp(); }
+})();
+</script>
+</body>
+</html>
