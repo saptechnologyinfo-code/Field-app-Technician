@@ -34,6 +34,8 @@
   }
   @keyframes fadeIn{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
   .fade-in{ animation:fadeIn .25s ease both; }
+  @keyframes slideIn{ from{opacity:0; transform:translateX(14px);} to{opacity:1; transform:translateX(0);} }
+  .page-in{ animation:slideIn .22s ease both; }
   .theme-toggle{
     position:fixed; top:16px; right:16px; width:44px; height:44px; border-radius:50%;
     background:var(--card); border:1px solid var(--border); box-shadow:var(--shadow);
@@ -75,7 +77,13 @@
   .job-row-left span{font-size:.8rem;color:var(--muted);}
   .empty-note{color:var(--muted);font-size:.9rem;padding:8px 0;}
   #detailPanel h2{font-size:1rem;margin:0 0 4px;}
-  .detail-close{float:right;background:none;border:none;font-size:1.2rem;color:var(--muted);width:auto;padding:0;cursor:pointer;}
+  .detail-page-header{display:flex;align-items:center;margin-bottom:12px;}
+  .back-btn{
+    width:auto;margin:0;padding:8px 10px 8px 4px;background:none;border:none;
+    color:var(--primary);font-size:.95rem;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:4px;border-radius:8px;
+  }
+  .back-btn:hover{background:var(--hover-bg);}
   .section-title{font-size:.85rem;color:var(--muted);font-weight:600;margin:18px 0 8px;text-transform:uppercase;letter-spacing:.03em;}
   .thumb{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin:4px 4px 0 0;}
   .bill-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
@@ -121,68 +129,81 @@
 
     <div id="permissionsBanner" class="config-banner hidden"></div>
 
-    <div class="card">
-      <h2 style="font-size:1rem;margin-top:0;">Start a new job</h2>
-      <label>Select branch (accounts)</label>
-      <select id="branchSelect"></select>
-      <label>Select site</label>
-      <select id="siteSelect"></select>
-      <button class="btn-primary" id="startBtn">Start Job</button>
-      <div class="error" id="startError"></div>
-    </div>
-
-    <div class="card">
-      <h2 style="font-size:1rem;margin-top:0;">My jobs</h2>
-      <div id="jobsList"><div class="empty-note">No jobs yet.</div></div>
-    </div>
-
-    <div class="card hidden" id="detailPanel">
-      <button class="detail-close" id="closeDetailBtn">&times;</button>
-      <span class="status-pill pill-started" id="detailStatusPill">STARTED</span>
-      <div class="job-number" id="detailJobNumber">—</div>
-      <div class="meta-row"><span>Branch</span><b id="detailBranchName">—</b></div>
-      <div class="meta-row"><span>Site</span><b id="detailSiteName">—</b></div>
-      <div class="meta-row"><span>Started at</span><b id="detailStartTime">—</b></div>
-      <div class="meta-row hidden" id="detailReachedRow"><span>Reached at</span><b id="detailReachTime">—</b></div>
-      <div class="meta-row hidden" id="detailGpsRow"><span>GPS distance</span><b id="detailGpsDistance">—</b></div>
-
-      <div class="status-row">
-        <select id="statusSelect">
-          <option value="started">Started</option>
-          <option value="reached">Reached</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-        <button class="btn-primary" id="updateStatusBtn" style="margin:0;">Update</button>
-      </div>
-      <div class="error" id="statusError"></div>
-
-      <div class="hidden" id="actualDistanceBlock">
-        <label>Actual distance travelled (km) — optional, overrides GPS if entered</label>
-        <input id="actualDistanceInput" type="number" step="0.1" min="0" placeholder="e.g. 12.5" />
-        <button class="btn-ghost" id="saveActualDistanceBtn">Save actual distance</button>
-        <div class="error" id="actualDistanceError"></div>
+    <!-- ===================== HOME PAGE ===================== -->
+    <div id="homeView">
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">Start a new job</h2>
+        <label>Select branch (accounts)</label>
+        <select id="branchSelect"></select>
+        <label>Select site</label>
+        <select id="siteSelect"></select>
+        <button class="btn-primary" id="startBtn">Start Job</button>
+        <div class="error" id="startError"></div>
       </div>
 
-      <div class="section-title">Job photos</div>
-      <input type="file" id="photoInput" accept="image/*" multiple />
-      <button class="btn-primary" id="uploadPhotosBtn">Upload photo(s)</button>
-      <div class="error" id="photosError"></div>
-      <div id="photosGrid" style="display:flex;flex-wrap:wrap;margin-top:12px;"></div>
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">My jobs</h2>
+        <div id="jobsList"><div class="empty-note">No jobs yet.</div></div>
+      </div>
+    </div>
 
-      <div class="section-title">Purchases / bills</div>
-      <label>Amount (Rs.)</label>
-      <input id="billAmountInput" type="number" step="0.01" min="0" placeholder="e.g. 1500" />
-      <label>Description (optional)</label>
-      <input id="billDescInput" placeholder="e.g. CAT6 cable, 10m" />
-      <label>Receipt photo (optional)</label>
-      <input type="file" id="billPhotoInput" accept="image/*" />
-      <button class="btn-primary" id="addBillBtn">Add bill</button>
-      <div class="error" id="billsError"></div>
-      <div id="billsList" style="margin-top:8px;"></div>
+    <!-- ===================== JOB DETAIL PAGE ===================== -->
+    <div id="jobDetailView" class="hidden">
+      <div class="detail-page-header">
+        <button class="back-btn" id="backBtn">&larr; Back to jobs</button>
+      </div>
 
-      <div class="section-title">Fund given (by admin)</div>
-      <div id="fundsList" class="sub">No funds recorded yet.</div>
+      <div class="card" id="detailPanel">
+        <span class="status-pill pill-started" id="detailStatusPill">STARTED</span>
+        <div class="job-number" id="detailJobNumber">—</div>
+        <div class="meta-row"><span>Branch</span><b id="detailBranchName">—</b></div>
+        <div class="meta-row"><span>Site</span><b id="detailSiteName">—</b></div>
+        <div class="meta-row"><span>Started at</span><b id="detailStartTime">—</b></div>
+        <div class="meta-row hidden" id="detailReachedRow"><span>Reached at</span><b id="detailReachTime">—</b></div>
+        <div class="meta-row hidden" id="detailGpsRow"><span>GPS distance</span><b id="detailGpsDistance">—</b></div>
+
+        <div class="status-row">
+          <select id="statusSelect">
+            <option value="started">Started</option>
+            <option value="reached">Reached</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <button class="btn-primary" id="updateStatusBtn" style="margin:0;">Update</button>
+        </div>
+        <div class="error" id="statusError"></div>
+
+        <div class="hidden" id="actualDistanceBlock">
+          <label>Actual distance travelled (km) — optional, overrides GPS if entered</label>
+          <input id="actualDistanceInput" type="number" step="0.1" min="0" placeholder="e.g. 12.5" />
+          <button class="btn-ghost" id="saveActualDistanceBtn">Save actual distance</button>
+          <div class="error" id="actualDistanceError"></div>
+        </div>
+
+        <div class="section-title">Job photos</div>
+        <input type="file" id="photoInput" accept="image/*" multiple />
+        <button class="btn-primary" id="uploadPhotosBtn">Upload photo(s)</button>
+        <div class="error" id="photosError"></div>
+        <div id="photosGrid" style="display:flex;flex-wrap:wrap;margin-top:12px;"></div>
+
+        <div class="section-title">Purchases / bills</div>
+        <label>Amount (Rs.)</label>
+        <input id="billAmountInput" type="number" step="0.01" min="0" placeholder="e.g. 1500" />
+        <label>Description (optional)</label>
+        <input id="billDescInput" placeholder="e.g. CAT6 cable, 10m" />
+        <label>Receipt photo (optional)</label>
+        <input type="file" id="billPhotoInput" accept="image/*" />
+        <button class="btn-primary" id="addBillBtn">Add bill</button>
+        <div class="error" id="billsError"></div>
+        <div id="billsList" style="margin-top:8px;"></div>
+
+        <div class="section-title">Fund given (by admin)</div>
+        <div id="fundsList" class="sub">No funds recorded yet.</div>
+      </div>
+
+      <div class="detail-page-header" style="margin-top:4px;">
+        <button class="back-btn" id="backBtnBottom">&larr; Back to jobs</button>
+      </div>
     </div>
 
   </div>
@@ -335,8 +356,14 @@ const startError = document.getElementById('startError');
 
 const jobsList = document.getElementById('jobsList');
 
-const detailPanel = document.getElementById('detailPanel');
-const closeDetailBtn = document.getElementById('closeDetailBtn');
+// Two top-level "pages" within appView: the jobs list/home page, and the
+// single-job detail page. Only one is visible at a time; navigating
+// between them is a page swap, not an inline expand/collapse.
+const homeView = document.getElementById('homeView');
+const jobDetailView = document.getElementById('jobDetailView');
+const backBtn = document.getElementById('backBtn');
+const backBtnBottom = document.getElementById('backBtnBottom');
+
 const detailStatusPill = document.getElementById('detailStatusPill');
 const detailJobNumber = document.getElementById('detailJobNumber');
 const detailBranchName = document.getElementById('detailBranchName');
@@ -456,6 +483,7 @@ logoutBtn.addEventListener('click', () => {
   selectedJob = null;
   appView.classList.add('hidden');
   loginView.classList.remove('hidden');
+  showHome(); // reset page state so next login lands on the jobs list
 });
 
 /* ---------- Start job dropdowns ---------- */
@@ -495,7 +523,7 @@ async function loadJobsList(){
     jobsCache = jobs;
     if(jobs.length === 0){ jobsList.innerHTML = '<div class="empty-note fade-in">No jobs yet.</div>'; return; }
     jobsList.innerHTML = jobs.map(j => `
-      <div class="job-row fade-in ${selectedJob && selectedJob.id === j.id ? 'selected' : ''}" data-job-id="${j.id}">
+      <div class="job-row fade-in" data-job-id="${j.id}">
         <div class="job-row-left">
           <b>${j.job_number}</b>
           <span>${j.branch_name ? j.branch_name + ' · ' : ''}${j.site_name} · ${fmtTime(j.start_time)}</span>
@@ -514,27 +542,35 @@ async function loadJobsList(){
   }
 }
 
-/* ---------- Detail panel ---------- */
+/* ---------- Page navigation: home (jobs list) <-> job detail ---------- */
+function showHome(){
+  jobDetailView.classList.add('hidden');
+  homeView.classList.remove('hidden');
+  homeView.classList.add('page-in');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function showJobDetail(){
+  homeView.classList.add('hidden');
+  jobDetailView.classList.remove('hidden');
+  jobDetailView.classList.add('page-in');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 function openDetail(job){
   selectedJob = job;
-  detailPanel.classList.remove('hidden');
-  renderJobsListHighlight();
   renderDetail();
+  showJobDetail();
   loadPhotos();
   loadBills();
   loadFunds();
-  detailPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
-function renderJobsListHighlight(){
-  jobsList.querySelectorAll('.job-row').forEach(row => {
-    row.classList.toggle('selected', selectedJob && row.dataset.jobId === selectedJob.id);
-  });
-}
-closeDetailBtn.addEventListener('click', () => {
+function goBackToJobs(){
   selectedJob = null;
-  detailPanel.classList.add('hidden');
-  renderJobsListHighlight();
-});
+  showHome();
+  loadJobsList(); // refresh, in case status/photos/bills changed while in detail
+}
+backBtn.addEventListener('click', goBackToJobs);
+backBtnBottom.addEventListener('click', goBackToJobs);
 
 function renderDetail(){
   const j = selectedJob;
@@ -580,7 +616,7 @@ updateStatusBtn.addEventListener('click', async () => {
     }
     await loadJobsList();
     const refreshed = jobsCache.find(j => j.id === selectedJob.id);
-    if(refreshed) openDetail(refreshed);
+    if(refreshed){ selectedJob = refreshed; renderDetail(); }
   } catch(e){
     statusError.textContent = e.message || 'Could not update status.';
   } finally {
@@ -694,6 +730,7 @@ async function enterApp(){
   loginView.classList.add('hidden');
   appView.classList.remove('hidden');
   techNameEl.textContent = technician.name;
+  showHome(); // always land on the jobs list page after login
   requestDevicePermissions(); // fire-and-forget — shows browser prompts, doesn't block the UI
   await loadBranches();
   await loadSites();
