@@ -101,8 +101,8 @@
 <div class="wrap">
 
   <div id="configBanner" class="config-banner hidden">
-    ⚠️ Set <code>WEB_APP_URL</code> at the top of the script section in this file to your deployed
-    Apps Script Web App URL (ends in <code>/exec</code>) before using this page.
+    ⚠️ Set <code>EDGE_FUNCTION_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of the
+    script section in this file to your deployed values before using this page.
   </div>
 
   <div id="loginView">
@@ -228,29 +228,54 @@
 
 <script>
 /* =====================================================================
- * CONFIG — paste your deployed Apps Script Web App URL here.
- * Deploy -> New deployment -> Web app -> copy the URL ending in /exec.
+ * CONFIG — paste your deployed Supabase Edge Function URL and anon
+ * (public) key here.
+ * Edge Function URL: Project -> Edge Functions -> api -> copy the URL
+ * (ends in /functions/v1/api). Anon key: Project Settings -> API.
  * ===================================================================== */
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz1QlBqThpiSHjnQbIIfoN52_pOgEO8EYkXzt3e9xe9WqHhT1wQ-Yi51k02Xn4ypWsk/exec"; // e.g. "https://script.google.com/macros/s/AKfycbxxxxxxxx/exec"
+const EDGE_FUNCTION_URL = "https://acdyletpjdmrqddylgcn.supabase.co/functions/v1/smart-responder";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjZHlsZXRwamRtcnFkZHlsZ2NuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MDA2NTUsImV4cCI6MjEwNTM3NjY1NX0.2JaoROSxmbbo1Dah-oiBqKULru1Gz8koL0wBlMJbEyI";
 
-/* ---------- gsRun: calls the Apps Script Web App backend over HTTP ----------
- * Uses Content-Type: text/plain to avoid a CORS preflight request, since
- * Apps Script web apps don't handle OPTIONS requests. The server (doPost
- * in Code.gs) still parses the body as JSON regardless of this header. */
+/* ---------- gsRun: calls the Supabase Edge Function backend over HTTP ----------
+ * Same { fn, args } contract the old Apps Script Web App used, so
+ * every gsRun(...) call elsewhere in this file is unchanged. Supabase
+ * Edge Functions require a valid apikey/Authorization header on every
+ * request (unlike the old Apps Script endpoint), which is what the
+ * anon key below is for — it authenticates the request to Supabase,
+ * it does not touch the database directly (the Edge Function uses its
+ * own service-role key for that; see supabase/functions/api). */
 function gsRun(fnName, ...args){
-  return fetch(WEB_APP_URL, {
+  return fetch(EDGE_FUNCTION_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
+    },
     body: JSON.stringify({ fn: fnName, args: args })
   })
-  .then(res => {
-    if(!res.ok) throw new Error('Network error: ' + res.status);
-    return res.json();
-  })
+  .then(res => res.json())
   .then(data => {
     if(!data.ok) throw new Error(data.error || 'Request failed.');
     return data.result;
   });
+}
+// Bill/job-photo receipts are Storage object paths; the Edge Function
+// downloads them and returns a data: URL, same contract as the old
+// getFileDataUrl(). Open a blank tab immediately (so popup blockers
+// don't catch it), then fill it in once the data arrives.
+async function openReceipt(path){
+  const win = window.open('', '_blank');
+  try{
+    const dataUrl = await gsRun('getFileDataUrl', path);
+    if(win) win.document.write(`<title>Receipt</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100vh;" /></body>`);
+  } catch(e){
+    if(win) win.document.write('Could not load receipt.');
+  }
+}
+
+if(EDGE_FUNCTION_URL.indexOf('YOUR-PROJECT-REF') !== -1 || SUPABASE_ANON_KEY.indexOf('PASTE_YOUR') !== -1){
+  document.getElementById('configBanner').classList.remove('hidden');
 }
 
 /* ---------- Offline queue ----------
@@ -322,18 +347,6 @@ async function flushOfflineQueue(){
 }
 window.addEventListener('online', flushOfflineQueue);
 window.addEventListener('offline', updateOfflineBanner);
-// Bill receipts are stored as bare Drive file IDs (see note in loadPhotos).
-// Open a blank tab immediately (so popup blockers don't catch it), then
-// fill it in once the image data arrives.
-async function openReceipt(fileId){
-  const win = window.open('', '_blank');
-  try{
-    const dataUrl = await gsRun('getFileDataUrl', fileId);
-    if(win) win.document.write(`<title>Receipt</title><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh;"><img src="${dataUrl}" style="max-width:100%;max-height:100vh;" /></body>`);
-  } catch(e){
-    if(win) win.document.write('Could not load receipt.');
-  }
-}
 /* ---------- Dark mode ---------- */
 const THEME_KEY = 'jobtracker-theme';
 function applyTheme(theme){
@@ -423,10 +436,6 @@ function compressImage(file, maxDim = 1600, quality = 0.75){
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-if(WEB_APP_URL.indexOf('PASTE_YOUR_WEB_APP_URL_HERE') !== -1){
-  document.getElementById('configBanner').classList.remove('hidden');
 }
 
 const loginView = document.getElementById('loginView');
@@ -758,9 +767,8 @@ async function loadPhotos(){
   try{
     const photos = await gsRun('listJobPhotos', selectedJob.id);
     if(photos.length === 0){ photosGrid.innerHTML = ''; return; }
-    // Photos are stored as bare Drive file IDs, not URLs — each one is
-    // fetched as a data: URI over the same JSON API as everything else,
-    // since Apps Script web apps can't serve a raw file link directly.
+    // Photos are stored as Storage object paths — the Edge Function
+    // resolves each one to a data: URL.
     const dataUrls = await Promise.all(photos.map(p => gsRun('getFileDataUrl', p.url).catch(() => null)));
     photosGrid.innerHTML = dataUrls.map(src => src ? `<img class="thumb fade-in" src="${src}" alt="job photo" />` : '').join('');
   } catch(e){ photosGrid.innerHTML = ''; }
