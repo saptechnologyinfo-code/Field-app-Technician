@@ -13,6 +13,9 @@
     --input-bg:#fafbfc; --hover-bg:#fafbfc; --danger-bg:#fdeaea; --selected-bg:#eef4fe;
     --skeleton-base:#e8ecf1; --skeleton-highlight:#f6f8fa;
     --shadow:0 1px 3px rgba(0,0,0,.04);
+    --bar:#7aaac8; --bar-text:#ffffff;
+    --tile:#7aaac8; --tile-edge:#6497b8; --tile-icon:#ffffff; --tile-label:#0a1a55;
+    --tile-shadow:0 6px 10px -4px rgba(20,50,80,.35);
   }
   :root[data-theme="dark"]{
     --primary:#4c8dff; --primary-dark:#3a72d9; --bg:#10151b; --card:#1a212a;
@@ -22,6 +25,9 @@
     --input-bg:#12181f; --hover-bg:#1f2731; --danger-bg:#3a1414; --selected-bg:#1c2a3d;
     --skeleton-base:#232b34; --skeleton-highlight:#2e3844;
     --shadow:0 1px 3px rgba(0,0,0,.3);
+    --bar:#1b2c3b; --bar-text:#eaf3fb;
+    --tile:#2f5b7c; --tile-edge:#274d69; --tile-icon:#eaf3fb; --tile-label:#dbe8f5;
+    --tile-shadow:0 6px 12px -4px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s ease, color .2s ease;}
@@ -93,11 +99,70 @@
   .status-row{display:flex;gap:8px;align-items:center;margin-top:10px;}
   .status-row select{flex:1;margin:0;}
   .status-row button{width:auto;margin:0;padding:12px 16px;}
-  .config-banner{background:#fff4e0;border:1px solid #f2d59b;color:#7a5b00;font-size:.85rem;padding:10px 14px;border-radius:10px;margin-bottom:16px;}
+  /* ---------- App bar + tile menu ---------- */
+  .app-bar{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--bar);color:var(--bar-text);
+    margin:-20px -16px 8px;padding:0 8px 0 20px;height:60px;
+    position:sticky;top:0;z-index:200;border-radius:0 0 6px 6px;
+    transition:background .2s ease;
+  }
+  .app-bar h1{margin:0;font-size:1.3rem;font-weight:700;color:var(--bar-text);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .app-bar .menu-btn{
+    width:48px;height:48px;margin:0;padding:0;background:none;border-radius:12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  }
+  .app-bar .menu-btn span{display:block;width:26px;height:4px;border-radius:2px;background:var(--bar-text);}
+  .app-bar .menu-btn:focus-visible{outline:2px solid var(--bar-text);outline-offset:2px;}
+  .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 22px;padding:26px 10px 8px;}
+  .tile{
+    background:none;border:none;padding:0;margin:0;width:100%;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--tile-label);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tile-box{
+    width:100%;aspect-ratio:1/1;border-radius:14px;
+    background:linear-gradient(180deg,var(--tile) 0%,var(--tile) 90%,var(--tile-edge) 100%);
+    box-shadow:var(--tile-shadow);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .12s ease, filter .12s ease;
+  }
+  .tile:active .tile-box{transform:scale(.96);filter:brightness(.94);}
+  .tile:focus-visible .tile-box{outline:3px solid var(--primary);outline-offset:3px;}
+  .tile-box svg{width:72%;height:72%;fill:none;stroke:var(--tile-icon);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;}
+  .tile-box svg .solid{fill:var(--tile-icon);stroke:none;}
+  .tile-label{font-size:1.02rem;font-weight:700;text-align:center;line-height:1.25;min-height:2.5em;}
+  .soon-card{text-align:center;padding:36px 20px;}
+  .soon-card .tile-box{width:96px;margin:0 auto 16px;}
+  .soon-card h2{margin:0 0 6px;font-size:1.15rem;}
+  /* ---------- Side menu ---------- */
+  .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+  .drawer-backdrop.open{opacity:1;pointer-events:auto;}
+  .drawer{
+    position:fixed;top:0;right:0;bottom:0;width:min(300px,84vw);background:var(--card);
+    border-left:1px solid var(--border);z-index:301;transform:translateX(100%);
+    transition:transform .22s ease;display:flex;flex-direction:column;padding:20px 16px;
+  }
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{padding:4px 4px 16px;border-bottom:1px solid var(--border);margin-bottom:8px;}
+  .drawer-head b{display:block;font-size:1.05rem;}
+  .drawer-head span{font-size:.85rem;color:var(--muted);}
+  .drawer-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    width:100%;margin:0;padding:14px 8px;background:none;border:none;border-radius:10px;
+    color:var(--text);font-size:1rem;font-weight:600;text-align:left;cursor:pointer;
+  }
+  .drawer-item:hover{background:var(--hover-bg);}
+  .drawer-item.danger{color:var(--danger);}
+  .switch{width:46px;height:26px;border-radius:13px;background:var(--grey-bg);border:1px solid var(--border);position:relative;flex:none;transition:background .2s ease;}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:transform .2s ease, background .2s ease;}
+  :root[data-theme="dark"] .switch{background:var(--primary);border-color:var(--primary);}
+  :root[data-theme="dark"] .switch::after{transform:translateX(20px);background:#fff;}
+  @media (prefers-reduced-motion:reduce){ .drawer,.drawer-backdrop,.tile-box{transition:none;} }
+  .config-banner{background:var(--warn-bg);border:1px solid var(--border);color:var(--warn);font-size:.85rem;padding:10px 14px;border-radius:10px;margin-bottom:16px;}
 </style>
 </head>
 <body>
-<button id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
 <div class="wrap">
 
   <div id="configBanner" class="config-banner hidden">
@@ -106,6 +171,7 @@
   </div>
 
   <div id="loginView">
+    <button id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
     <h1>Technician Login</h1>
     <p class="sub">Field Service Job Tracker</p>
     <div class="card">
@@ -119,22 +185,57 @@
   </div>
 
   <div id="appView" class="hidden">
-    <div class="top-bar">
-      <div>
-        <h1 id="techName" style="margin:0;">—</h1>
-        <span class="sub" style="display:block;">Technician</span>
-      </div>
-      <div>
-        <button class="logout" id="settingsBtn" style="margin-right:14px;">Change password</button>
-        <button class="logout" id="logoutBtn">Log out</button>
-      </div>
-    </div>
+    <header class="app-bar">
+      <h1>Hi <span id="techName">—</span></h1>
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-haspopup="true"><span></span><span></span><span></span></button>
+    </header>
 
     <div id="offlineBanner" class="config-banner hidden"></div>
     <div id="permissionsBanner" class="config-banner hidden"></div>
 
-    <!-- ===================== HOME PAGE ===================== -->
-    <div id="homeView">
+    <!-- ===================== MAIN MENU ===================== -->
+    <div id="menuView">
+      <div class="tile-grid">
+        <button class="tile" data-action="jobs" data-label="My Jobs">
+          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="30" y="18" width="42" height="62" rx="6"/><path d="M30 34h-8a5 5 0 0 0-5 5v30a8 8 0 0 0 8 8h5"/><text x="51" y="35" text-anchor="middle" font-size="12" font-weight="800" class="solid" font-family="Arial,sans-serif">JOBS</text><path d="M37 46h12M37 56h12M37 66h12M55 46v10"/><path d="M60 74l22-22 6 6-22 22-9 3z" class="solid"/></svg></span>
+          <span class="tile-label">My Jobs</span>
+        </button>
+        <button class="tile" data-action="soon" data-label="Stock Manage">
+          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M18 34l30-14 30 14v34L48 82 18 68z"/><path d="M18 34l30 14 30-14M48 48v34"/><circle cx="72" cy="68" r="15" class="solid" style="fill:var(--tile)"/><circle cx="72" cy="68" r="15"/><path d="M65 68l5 5 9-10"/></svg></span>
+          <span class="tile-label">Stock Manage</span>
+        </button>
+        <button class="tile" data-action="soon" data-label="Salary &amp; Attendance Updates">
+          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="40" cy="26" r="9" class="solid"/><path d="M20 82V52q0-12 14-14h12q6 1 10 6" /><path d="M20 82h34V50" /><path d="M46 44l10 10" /><path d="M66 46l-8 12" /><path d="M70 50c-6 0-12 6-12 16 0 8 4 14 12 14s12-6 12-14c0-10-6-16-12-16z"/><path d="M66 42l4 8 4-8" /><path d="M72 60v14M75 62h-5a2.5 2.5 0 0 0 0 5h4a2.5 2.5 0 0 1 0 5h-5"/></svg></span>
+          <span class="tile-label">Salary &amp; Attendance Updates</span>
+        </button>
+        <button class="tile" data-action="soon" data-label="Invoice &amp; Quotation">
+          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="18" y="20" width="56" height="58" rx="6"/><path d="M18 36h56M18 52h30M18 66h30M40 36v42M58 36v14"/><circle cx="68" cy="66" r="16" style="fill:var(--tile)"/><path d="M68 56v20M72 59h-6a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-6"/></svg></span>
+          <span class="tile-label">Invoice &amp; Quotation</span>
+        </button>
+        <button class="tile" data-action="soon" data-label="Reports">
+          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="20" width="68" height="46" rx="6"/><path d="M26 56V46M34 56V40M42 56V48M50 56V34" /><path d="M26 36l10-8 8 4 10-10"/><path d="M62 30h14M62 40h14M62 50h8"/><path d="M62 82V62a3 3 0 0 1 6 0v9l10 3v8z" class="solid"/></svg></span>
+          <span class="tile-label">Reports</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ===================== COMING-SOON SECTION ===================== -->
+    <div id="sectionView" class="hidden">
+      <div class="detail-page-header">
+        <button class="back-btn" id="sectionBackBtn">&larr; Menu</button>
+      </div>
+      <div class="card soon-card">
+        <div class="tile-box" id="sectionIcon"></div>
+        <h2 id="sectionTitle">—</h2>
+        <div class="sub" style="margin:0;">This section isn't set up yet. It will appear here once it's added.</div>
+      </div>
+    </div>
+
+    <!-- ===================== MY JOBS PAGE ===================== -->
+    <div id="jobsView" class="hidden">
+      <div class="detail-page-header">
+        <button class="back-btn" id="jobsBackBtn">&larr; Menu</button>
+      </div>
       <div class="card">
         <h2 style="font-size:1rem;margin-top:0;">Start a new job</h2>
         <label>Select branch (accounts)</label>
@@ -212,6 +313,14 @@
 
   </div>
 </div>
+
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head"><b id="drawerName">—</b><span>Technician</span></div>
+  <button class="drawer-item" id="themeToggle2" role="switch" aria-checked="false"><span>Dark mode</span><span class="switch"></span></button>
+  <button class="drawer-item" id="settingsBtn">Change password</button>
+  <button class="drawer-item danger" id="logoutBtn">Log out</button>
+</aside>
 
 <div class="modal-overlay hidden" id="pwModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;">
   <div class="card" style="max-width:360px;width:100%;margin:0;">
@@ -353,6 +462,8 @@ function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   const btn = document.getElementById('themeToggle');
   if(btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  const sw = document.getElementById('themeToggle2');
+  if(sw) sw.setAttribute('aria-checked', theme === 'dark' ? 'true' : 'false');
   localStorage.setItem(THEME_KEY, theme);
 }
 (function initTheme(){
@@ -360,10 +471,13 @@ function applyTheme(theme){
   const theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
   applyTheme(theme);
 })();
-document.getElementById('themeToggle').addEventListener('click', () => {
+function flipTheme(){
   const current = document.documentElement.getAttribute('data-theme');
   applyTheme(current === 'dark' ? 'light' : 'dark');
-});
+}
+document.getElementById('themeToggle').addEventListener('click', flipTheme);
+document.getElementById('themeToggle2').addEventListener('click', flipTheme);
+applyTheme(document.documentElement.getAttribute('data-theme'));
 
 /* ---------- Skeleton loading placeholders ---------- */
 function skeletonJobRows(count){
@@ -455,7 +569,9 @@ const jobsList = document.getElementById('jobsList');
 // Two top-level "pages" within appView: the jobs list/home page, and the
 // single-job detail page. Only one is visible at a time; navigating
 // between them is a page swap, not an inline expand/collapse.
-const homeView = document.getElementById('homeView');
+const menuView = document.getElementById('menuView');
+const jobsView = document.getElementById('jobsView');
+const sectionView = document.getElementById('sectionView');
 const jobDetailView = document.getElementById('jobDetailView');
 const backBtn = document.getElementById('backBtn');
 const backBtnBottom = document.getElementById('backBtnBottom');
@@ -579,7 +695,7 @@ logoutBtn.addEventListener('click', () => {
   selectedJob = null;
   appView.classList.add('hidden');
   loginView.classList.remove('hidden');
-  showHome(); // reset page state so next login lands on the jobs list
+  showHome(); // reset page state so next login lands on the main menu
 });
 
 /* ---------- Change password ---------- */
@@ -661,18 +777,39 @@ async function loadJobsList(){
 }
 
 /* ---------- Page navigation: home (jobs list) <-> job detail ---------- */
-function showHome(){
-  jobDetailView.classList.add('hidden');
-  homeView.classList.remove('hidden');
-  homeView.classList.add('page-in');
+const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView];
+function showView(view){
+  ALL_VIEWS().forEach(v => v.classList.add('hidden'));
+  view.classList.remove('hidden');
+  view.classList.remove('page-in'); void view.offsetWidth; view.classList.add('page-in');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function showJobDetail(){
-  homeView.classList.add('hidden');
-  jobDetailView.classList.remove('hidden');
-  jobDetailView.classList.add('page-in');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+function showHome(){ showView(menuView); }        // main tile menu
+function showJobs(){ showView(jobsView); }        // start job + my jobs list
+function showJobDetail(){ showView(jobDetailView); }
+function showSection(label, iconHtml){
+  document.getElementById('sectionTitle').textContent = label;
+  document.getElementById('sectionIcon').innerHTML = iconHtml;
+  showView(sectionView);
 }
+
+menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => {
+  if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); }
+  else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
+}));
+document.getElementById('jobsBackBtn').addEventListener('click', showHome);
+document.getElementById('sectionBackBtn').addEventListener('click', showHome);
+
+/* ---------- Side menu ---------- */
+const drawer = document.getElementById('drawer');
+const drawerBackdrop = document.getElementById('drawerBackdrop');
+function openDrawer(){ drawer.classList.add('open'); drawerBackdrop.classList.add('open'); drawer.setAttribute('aria-hidden','false'); }
+function closeDrawer(){ drawer.classList.remove('open'); drawerBackdrop.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); }
+document.getElementById('menuBtn').addEventListener('click', openDrawer);
+drawerBackdrop.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDrawer(); });
+document.getElementById('settingsBtn').addEventListener('click', closeDrawer);
+document.getElementById('logoutBtn').addEventListener('click', closeDrawer);
 
 function openDetail(job){
   selectedJob = job;
@@ -684,7 +821,7 @@ function openDetail(job){
 }
 function goBackToJobs(){
   selectedJob = null;
-  showHome();
+  showJobs();
   loadJobsList(); // refresh, in case status/photos/bills changed while in detail
 }
 backBtn.addEventListener('click', goBackToJobs);
@@ -854,7 +991,8 @@ async function enterApp(){
   loginView.classList.add('hidden');
   appView.classList.remove('hidden');
   techNameEl.textContent = technician.name;
-  showHome(); // always land on the jobs list page after login
+  document.getElementById('drawerName').textContent = technician.name;
+  showHome(); // always land on the main menu after login
   requestDevicePermissions(); // fire-and-forget — shows browser prompts, doesn't block the UI
   updateOfflineBanner();
   flushOfflineQueue(); // fire-and-forget — syncs anything queued from a previous offline session
