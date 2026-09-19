@@ -124,9 +124,13 @@
         <h1 id="techName" style="margin:0;">—</h1>
         <span class="sub" style="display:block;">Technician</span>
       </div>
-      <button class="logout" id="logoutBtn">Log out</button>
+      <div>
+        <button class="logout" id="settingsBtn" style="margin-right:14px;">Change password</button>
+        <button class="logout" id="logoutBtn">Log out</button>
+      </div>
     </div>
 
+    <div id="offlineBanner" class="config-banner hidden"></div>
     <div id="permissionsBanner" class="config-banner hidden"></div>
 
     <!-- ===================== HOME PAGE ===================== -->
@@ -209,6 +213,19 @@
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="pwModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;">
+  <div class="card" style="max-width:360px;width:100%;margin:0;">
+    <h2 style="font-size:1rem;margin-top:0;">Change password</h2>
+    <label>Current password</label>
+    <input id="pwCurrent" type="password" />
+    <label>New password</label>
+    <input id="pwNew" type="password" />
+    <div class="error" id="pwError"></div>
+    <button class="btn-primary" id="pwSaveBtn">Save new password</button>
+    <button class="btn-ghost" id="pwCancelBtn">Cancel</button>
+  </div>
+</div>
+
 <script>
 /* =====================================================================
  * CONFIG — paste your deployed Apps Script Web App URL here.
@@ -235,6 +252,76 @@ function gsRun(fnName, ...args){
     return data.result;
   });
 }
+
+/* ---------- Offline queue ----------
+ * A small, best-effort queue for a handful of mutating actions that
+ * commonly get tapped in poor-signal areas (status updates, GPS "reach"
+ * events, bills without a receipt photo). If the request fails because
+ * the device has no network (as opposed to the server returning an
+ * error), the action is saved to localStorage instead of being lost,
+ * and is replayed automatically once the browser reports it's back
+ * online. This does NOT cover photo uploads or bills with receipts —
+ * those payloads are large and better retried by hand once you have a
+ * connection, so those calls still fail immediately offline. */
+const OFFLINE_QUEUE_KEY = 'jobtracker-offline-queue';
+const QUEUEABLE_FNS = ['setJobStatus', 'reachSite', 'setActualDistance', 'addJobBill'];
+
+function isNetworkError(e){
+  return e instanceof TypeError || /failed to fetch|network/i.test(e.message || '');
+}
+function getQueue(){ try{ return JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)) || []; } catch(e){ return []; } }
+function setQueue(q){ localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(q)); updateOfflineBanner(); }
+
+function updateOfflineBanner(){
+  const banner = document.getElementById('offlineBanner');
+  if(!banner) return;
+  const q = getQueue();
+  if(!navigator.onLine){
+    banner.textContent = q.length
+      ? `📴 You're offline. ${q.length} change(s) will sync when you're back online.`
+      : `📴 You're offline. Status updates and bill entries will be saved and synced automatically.`;
+    banner.classList.remove('hidden');
+  } else if(q.length){
+    banner.textContent = `🔄 Syncing ${q.length} pending change(s)…`;
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
+// gsRunQueueable behaves like gsRun for the whitelisted functions above,
+// but on a genuine network failure it queues the call instead of
+// throwing, and resolves immediately so the UI can optimistically move
+// on (the real result will apply once the queue flushes).
+async function gsRunQueueable(fnName, ...args){
+  try{
+    return await gsRun(fnName, ...args);
+  } catch(e){
+    if(QUEUEABLE_FNS.includes(fnName) && isNetworkError(e)){
+      const q = getQueue();
+      q.push({ fn: fnName, args, queuedAt: Date.now() });
+      setQueue(q);
+      return null; // caller treats this as "saved locally, will sync"
+    }
+    throw e;
+  }
+}
+
+async function flushOfflineQueue(){
+  if(!navigator.onLine) return;
+  let q = getQueue();
+  if(!q.length) return;
+  updateOfflineBanner();
+  const remaining = [];
+  for(const item of q){
+    try{ await gsRun(item.fn, ...item.args); }
+    catch(e){ remaining.push(item); } // keep it queued if it still fails
+  }
+  setQueue(remaining);
+  if(remaining.length === 0){ await loadJobsList(); if(selectedJob){ const r = jobsCache.find(j => j.id === selectedJob.id); if(r){ selectedJob = r; renderDetail(); } } }
+}
+window.addEventListener('online', flushOfflineQueue);
+window.addEventListener('offline', updateOfflineBanner);
 // Bill receipts are stored as bare Drive file IDs (see note in loadPhotos).
 // Open a blank tab immediately (so popup blockers don't catch it), then
 // fill it in once the image data arrives.
@@ -486,6 +573,28 @@ logoutBtn.addEventListener('click', () => {
   showHome(); // reset page state so next login lands on the jobs list
 });
 
+/* ---------- Change password ---------- */
+const pwModal = document.getElementById('pwModal');
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  document.getElementById('pwCurrent').value = '';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwError').textContent = '';
+  pwModal.classList.remove('hidden');
+});
+document.getElementById('pwCancelBtn').addEventListener('click', () => pwModal.classList.add('hidden'));
+document.getElementById('pwSaveBtn').addEventListener('click', async () => {
+  const errEl = document.getElementById('pwError');
+  errEl.textContent = '';
+  const current = document.getElementById('pwCurrent').value;
+  const next = document.getElementById('pwNew').value;
+  if(!current || !next){ errEl.textContent = 'Fill in both fields.'; return; }
+  try{
+    await gsRun('changeOwnPassword', technician.id, current, next);
+    pwModal.classList.add('hidden');
+    alert('Password updated.');
+  } catch(e){ errEl.textContent = e.message || 'Could not update password.'; }
+});
+
 /* ---------- Start job dropdowns ---------- */
 async function loadSites(){
   const sites = (await gsRun('listSites')).filter(s => s.active);
@@ -610,9 +719,9 @@ updateStatusBtn.addEventListener('click', async () => {
   try{
     if(newStatus === 'reached' && selectedJob.status !== 'reached'){
       const loc = await getLocation();
-      await gsRun('reachSite', selectedJob.id, loc.lat, loc.lng);
+      await gsRunQueueable('reachSite', selectedJob.id, loc.lat, loc.lng);
     } else {
-      await gsRun('setJobStatus', selectedJob.id, newStatus);
+      await gsRunQueueable('setJobStatus', selectedJob.id, newStatus, technician.id);
     }
     await loadJobsList();
     const refreshed = jobsCache.find(j => j.id === selectedJob.id);
@@ -632,7 +741,7 @@ saveActualDistanceBtn.addEventListener('click', async () => {
   if(isNaN(km) || km < 0){ actualDistanceError.textContent = 'Enter a valid number.'; return; }
   setLoading(saveActualDistanceBtn, true, 'Save actual distance');
   try{
-    await gsRun('setActualDistance', selectedJob.id, km);
+    await gsRunQueueable('setActualDistance', selectedJob.id, km, technician.id);
     await loadJobsList();
     const refreshed = jobsCache.find(j => j.id === selectedJob.id);
     if(refreshed) selectedJob = refreshed;
@@ -700,7 +809,14 @@ addBillBtn.addEventListener('click', async () => {
     let base64 = null, filename = '', mimeType = '';
     const file = billPhotoInput.files[0];
     if(file){ const c = await compressImage(file); base64 = c.base64; mimeType = c.mimeType; filename = file.name.replace(/\.[^.]+$/, '') + '.jpg'; }
-    await gsRun('addJobBill', selectedJob.id, amount, billDescInput.value.trim() || null, base64, filename, mimeType);
+    // Bills with a receipt photo attached always go straight through —
+    // photo payloads are too large for the offline queue. A bill with no
+    // photo can be queued if there's no connection right now.
+    if(base64){
+      await gsRun('addJobBill', selectedJob.id, amount, billDescInput.value.trim() || null, base64, filename, mimeType);
+    } else {
+      await gsRunQueueable('addJobBill', selectedJob.id, amount, billDescInput.value.trim() || null, null, '', '');
+    }
     billAmountInput.value = ''; billDescInput.value = ''; billPhotoInput.value = '';
     await loadBills();
   } catch(e){
@@ -732,6 +848,8 @@ async function enterApp(){
   techNameEl.textContent = technician.name;
   showHome(); // always land on the jobs list page after login
   requestDevicePermissions(); // fire-and-forget — shows browser prompts, doesn't block the UI
+  updateOfflineBanner();
+  flushOfflineQueue(); // fire-and-forget — syncs anything queued from a previous offline session
   await loadBranches();
   await loadSites();
   await loadJobsList();
