@@ -66,6 +66,8 @@
   .pill-reached{background:var(--success-bg);color:var(--success);}
   .pill-completed{background:var(--grey-bg);color:var(--muted);}
   .pill-cancelled{background:var(--danger-bg);color:var(--danger);}
+  .pill-open{background:var(--grey-bg);color:var(--primary);}
+  .pill-in_progress{background:var(--selected-bg);color:var(--primary);}
   .job-number{font-size:1.3rem;font-weight:700;letter-spacing:.5px;margin:6px 0;}
   .meta-row{display:flex;justify-content:space-between;font-size:.85rem;color:var(--muted);margin:4px 0;}
   .meta-row b{color:var(--text);font-weight:600;}
@@ -159,6 +161,25 @@
   :root[data-theme="dark"] .switch{background:var(--primary);border-color:var(--primary);}
   :root[data-theme="dark"] .switch::after{transform:translateX(20px);background:#fff;}
   @media (prefers-reduced-motion:reduce){ .drawer,.drawer-backdrop,.tile-box{transition:none;} }
+  .open-job{padding:14px 0;border-bottom:1px solid var(--border);}
+  .open-job:last-child{border-bottom:none;padding-bottom:0;}
+  .open-job:first-child{padding-top:4px;}
+  .open-job-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .open-job-top b{font-size:1rem;}
+  .open-job-meta{font-size:.85rem;color:var(--muted);margin-top:2px;}
+  .open-job-note{font-size:.88rem;margin-top:6px;}
+  .open-job-warn{font-size:.82rem;color:var(--warn);background:var(--warn-bg);border-radius:8px;padding:7px 10px;margin-top:8px;}
+  .open-job button{margin-top:10px;padding:12px;}
+  .open-job .btn-ghost:not(:disabled){color:var(--primary);border-color:var(--primary);}
+  .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .card-head h2{margin:0;font-size:1rem;}
+  .link-btn{width:auto;margin:0;padding:6px 4px;background:none;color:var(--primary);font-size:.85rem;font-weight:600;}
+  .perm-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
+  .perm-row:last-child{border-bottom:none;}
+  .track-banner{cursor:pointer;}
+  .track-note{font-size:.85rem;color:var(--primary);background:var(--selected-bg);border-radius:10px;padding:10px 12px;margin-top:12px;}
+  .action-stack{margin-top:12px;}
+  .action-stack button{margin-top:8px;}
   .config-banner{background:var(--warn-bg);border:1px solid var(--border);color:var(--warn);font-size:.85rem;padding:10px 14px;border-radius:10px;margin-bottom:16px;}
 </style>
 </head>
@@ -192,6 +213,7 @@
 
     <div id="offlineBanner" class="config-banner hidden"></div>
     <div id="permissionsBanner" class="config-banner hidden"></div>
+    <div id="trackBanner" class="config-banner track-banner hidden" role="button" tabindex="0"></div>
 
     <!-- ===================== MAIN MENU ===================== -->
     <div id="menuView">
@@ -236,19 +258,35 @@
       <div class="detail-page-header">
         <button class="back-btn" id="jobsBackBtn">&larr; Menu</button>
       </div>
+
       <div class="card">
-        <h2 style="font-size:1rem;margin-top:0;">Start a new job</h2>
+        <h2 style="font-size:1rem;margin-top:0;">My jobs</h2>
+        <div id="jobsList"><div class="empty-note">No jobs yet.</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Open jobs</h2>
+          <button class="link-btn" id="refreshOpenBtn">Refresh</button>
+        </div>
+        <div id="openJobsList"><div class="empty-note">No open jobs right now.</div></div>
+        <div class="error" id="openJobsError"></div>
+      </div>
+
+      <div class="card hidden" id="permCard">
+        <h2 style="font-size:1rem;margin-top:0;">Permission requests</h2>
+        <div id="permList"></div>
+      </div>
+
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">Start a job on the spot</h2>
         <label>Select branch (accounts)</label>
         <select id="branchSelect"></select>
         <label>Select site</label>
         <select id="siteSelect"></select>
         <button class="btn-primary" id="startBtn">Start Job</button>
         <div class="error" id="startError"></div>
-      </div>
-
-      <div class="card">
-        <h2 style="font-size:1rem;margin-top:0;">My jobs</h2>
-        <div id="jobsList"><div class="empty-note">No jobs yet.</div></div>
+        <button class="btn-ghost hidden" id="startPermBtn">Request admin permission for this site</button>
       </div>
     </div>
 
@@ -265,16 +303,15 @@
         <div class="meta-row"><span>Site</span><b id="detailSiteName">—</b></div>
         <div class="meta-row"><span>Started at</span><b id="detailStartTime">—</b></div>
         <div class="meta-row hidden" id="detailReachedRow"><span>Reached at</span><b id="detailReachTime">—</b></div>
+        <div class="meta-row hidden" id="detailWorkRow"><span>Work started</span><b id="detailWorkTime">—</b></div>
         <div class="meta-row hidden" id="detailGpsRow"><span>GPS distance</span><b id="detailGpsDistance">—</b></div>
 
-        <div class="status-row">
-          <select id="statusSelect">
-            <option value="started">Started</option>
-            <option value="reached">Reached</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <button class="btn-primary" id="updateStatusBtn" style="margin:0;">Update</button>
+        <div class="track-note hidden" id="trackNote"></div>
+        <div class="action-stack">
+          <button class="btn-primary hidden" id="reachedBtn">I've reached the site</button>
+          <button class="btn-primary hidden" id="startWorkBtn">Start job</button>
+          <button class="btn-primary hidden" id="completeBtn">Complete job</button>
+          <button class="btn-ghost hidden" id="cancelJobBtn">Cancel job</button>
         </div>
         <div class="error" id="statusError"></div>
 
@@ -586,9 +623,20 @@ const detailReachTime = document.getElementById('detailReachTime');
 const detailGpsRow = document.getElementById('detailGpsRow');
 const detailGpsDistance = document.getElementById('detailGpsDistance');
 
-const statusSelect = document.getElementById('statusSelect');
-const updateStatusBtn = document.getElementById('updateStatusBtn');
+const detailWorkRow = document.getElementById('detailWorkRow');
+const detailWorkTime = document.getElementById('detailWorkTime');
+const trackNote = document.getElementById('trackNote');
+const reachedBtn = document.getElementById('reachedBtn');
+const startWorkBtn = document.getElementById('startWorkBtn');
+const completeBtn = document.getElementById('completeBtn');
+const cancelJobBtn = document.getElementById('cancelJobBtn');
 const statusError = document.getElementById('statusError');
+const startPermBtn = document.getElementById('startPermBtn');
+const openJobsList = document.getElementById('openJobsList');
+const openJobsError = document.getElementById('openJobsError');
+const permCard = document.getElementById('permCard');
+const permList = document.getElementById('permList');
+const trackBanner = document.getElementById('trackBanner');
 
 const actualDistanceBlock = document.getElementById('actualDistanceBlock');
 const actualDistanceInput = document.getElementById('actualDistanceInput');
@@ -620,6 +668,12 @@ function fmtTime(ts){
   if(!ts) return '—';
   return new Date(ts).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
 }
+const STATUS_LABEL = { open:'OPEN', started:'ON THE WAY', reached:'REACHED', in_progress:'IN PROGRESS', completed:'COMPLETED', cancelled:'CANCELLED' };
+function statusLabel(st){ return STATUS_LABEL[st] || String(st).toUpperCase(); }
+function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Backend raises 'SITE_BUSY: ...' when a site already has an active job.
+function isSiteBusy(e){ return /^SITE_BUSY:/.test((e && e.message) || ''); }
+function cleanErr(e, fallback){ return ((e && e.message) || fallback || 'Something went wrong.').replace(/^SITE_BUSY:\s*/, ''); }
 function getLocation(){
   return new Promise((resolve, reject) => {
     if(!navigator.geolocation){ reject(new Error('Geolocation not supported on this device/browser')); return; }
@@ -690,6 +744,7 @@ loginBtn.addEventListener('click', async () => {
 });
 
 logoutBtn.addEventListener('click', () => {
+  stopTracking();
   clearSession();
   technician = null;
   selectedJob = null;
@@ -732,6 +787,7 @@ async function loadBranches(){
 
 startBtn.addEventListener('click', async () => {
   startError.textContent = '';
+  startPermBtn.classList.add('hidden');
   const siteId = siteSelect.value;
   const branchId = branchSelect.value;
   if(!branchId){ startError.textContent = 'Choose a branch.'; return; }
@@ -743,10 +799,16 @@ startBtn.addEventListener('click', async () => {
     await loadJobsList();
     if(jobsCache.length) openDetail(jobsCache[0]);
   } catch(e){
-    startError.textContent = e.message || 'Could not start job.';
+    startError.textContent = cleanErr(e, 'Could not start job.');
+    if(isSiteBusy(e)) startPermBtn.classList.remove('hidden');
   } finally {
     setLoading(startBtn, false, 'Start Job');
   }
+});
+siteSelect.addEventListener('change', () => { startError.textContent = ''; startPermBtn.classList.add('hidden'); });
+startPermBtn.addEventListener('click', async () => {
+  await requestPermission(siteSelect.value, startError, startPermBtn, 'Request admin permission for this site');
+  startPermBtn.classList.add('hidden');
 });
 
 /* ---------- Job list ---------- */
@@ -755,6 +817,7 @@ async function loadJobsList(){
   try{
     const jobs = await gsRun('listJobsForTechnician', technician.id);
     jobsCache = jobs;
+    syncTracking();
     if(jobs.length === 0){ jobsList.innerHTML = '<div class="empty-note fade-in">No jobs yet.</div>'; return; }
     jobsList.innerHTML = jobs.map(j => `
       <div class="job-row fade-in" data-job-id="${j.id}">
@@ -762,7 +825,7 @@ async function loadJobsList(){
           <b>${j.job_number}</b>
           <span>${j.branch_name ? j.branch_name + ' · ' : ''}${j.site_name} · ${fmtTime(j.start_time)}</span>
         </div>
-        <span class="status-pill pill-${j.status}">${j.status.toUpperCase()}</span>
+        <span class="status-pill pill-${j.status}">${statusLabel(j.status)}</span>
       </div>
     `).join('');
     jobsList.querySelectorAll('.job-row').forEach(row => {
@@ -794,7 +857,7 @@ function showSection(label, iconHtml){
 }
 
 menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => {
-  if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); }
+  if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
 document.getElementById('jobsBackBtn').addEventListener('click', showHome);
@@ -811,6 +874,189 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDrawer()
 document.getElementById('settingsBtn').addEventListener('click', closeDrawer);
 document.getElementById('logoutBtn').addEventListener('click', closeDrawer);
 
+
+/* ---------- Open jobs (assign to me) ---------- */
+let openJobsCache = [];
+async function loadOpenJobs(silent){
+  if(!silent) openJobsList.innerHTML = skeletonJobRows(2);
+  try{
+    openJobsCache = await gsRun('listOpenJobs', technician.id);
+    if(openJobsCache.length === 0){ openJobsList.innerHTML = '<div class="empty-note fade-in">No open jobs right now.</div>'; return; }
+    openJobsList.innerHTML = openJobsCache.map(j => {
+      let warn = '', btn;
+      if(j.site_busy_job && j.permission_status === 'approved'){
+        warn = `<div class="open-job-warn">Site has an active job (${esc(j.site_busy_job)}). Admin approved you to go ahead.</div>`;
+        btn = `<button class="btn-primary" data-assign="${j.id}">Assign to me</button>`;
+      } else if(j.site_busy_job && j.permission_status === 'pending'){
+        warn = `<div class="open-job-warn">Site has an active job (${esc(j.site_busy_job)}). Waiting for admin to approve.</div>`;
+        btn = `<button class="btn-ghost" disabled>Waiting for admin</button>`;
+      } else if(j.site_busy_job){
+        warn = `<div class="open-job-warn">Site has an active job (${esc(j.site_busy_job)}). You need admin permission to take another.</div>`;
+        btn = `<button class="btn-ghost" data-perm="${j.site_id}">Request permission</button>`;
+      } else {
+        btn = `<button class="btn-primary" data-assign="${j.id}">Assign to me</button>`;
+      }
+      return `
+      <div class="open-job fade-in">
+        <div class="open-job-top"><b>${esc(j.job_number)}</b><span class="status-pill pill-open">OPEN</span></div>
+        <div class="open-job-meta">${j.branch_name ? esc(j.branch_name) + ' · ' : ''}${esc(j.site_name)}${j.site_address ? ' · ' + esc(j.site_address) : ''}</div>
+        ${j.notes ? `<div class="open-job-note">${esc(j.notes)}</div>` : ''}
+        ${warn}
+        ${btn}
+      </div>`;
+    }).join('');
+    openJobsList.querySelectorAll('[data-assign]').forEach(b => b.addEventListener('click', () => assignJob(b.dataset.assign, b)));
+    openJobsList.querySelectorAll('[data-perm]').forEach(b => b.addEventListener('click', async () => {
+      await requestPermission(b.dataset.perm, openJobsError, b, 'Request permission');
+    }));
+  } catch(e){
+    if(!silent) openJobsList.innerHTML = '<div class="empty-note">Could not load open jobs.</div>';
+  }
+}
+async function assignJob(jobId, btn){
+  openJobsError.textContent = '';
+  setLoading(btn, true, 'Assign to me');
+  try{
+    const loc = await getLocation();
+    await gsRun('assignJob', jobId, technician.id, loc.lat, loc.lng);
+    await loadJobsList();
+    loadOpenJobs(true); loadPermissions(true);
+    const mine = jobsCache.find(j => j.id === jobId);
+    if(mine) openDetail(mine);
+  } catch(e){
+    openJobsError.textContent = cleanErr(e, 'Could not assign this job.');
+    setLoading(btn, false, 'Assign to me');
+    loadOpenJobs(true); // job may have been taken, or the site may now be busy
+  }
+}
+document.getElementById('refreshOpenBtn').addEventListener('click', () => { loadOpenJobs(); loadPermissions(true); });
+
+/* ---------- Site permission requests ---------- */
+async function requestPermission(siteId, errEl, btn, label){
+  if(!siteId){ errEl.textContent = 'Choose a site first.'; return; }
+  const reason = window.prompt('Why do you need another job at this site? (optional)');
+  if(reason === null) return; // cancelled
+  errEl.textContent = '';
+  setLoading(btn, true, label);
+  try{
+    await gsRun('requestSitePermission', technician.id, siteId, reason.trim() || null);
+    await loadPermissions(true); loadOpenJobs(true);
+    errEl.textContent = '';
+    alert('Request sent. You can assign the job once admin approves it.');
+  } catch(e){
+    errEl.textContent = cleanErr(e, 'Could not send the request.');
+  } finally {
+    setLoading(btn, false, label);
+  }
+}
+async function loadPermissions(silent){
+  try{
+    const rows = await gsRun('listMyPermissions', technician.id);
+    if(!rows.length){ permCard.classList.add('hidden'); return; }
+    const pill = { pending:['pill-started','WAITING'], approved:['pill-reached','APPROVED'], rejected:['pill-cancelled','REJECTED'] };
+    permList.innerHTML = rows.map(r => `
+      <div class="perm-row fade-in">
+        <span>${esc(r.site_name)}<div class="sub" style="margin:0;font-size:.78rem;">${fmtTime(r.requested_at)}</div></span>
+        <span class="status-pill ${pill[r.status][0]}">${pill[r.status][1]}</span>
+      </div>`).join('');
+    permCard.classList.remove('hidden');
+  } catch(e){ /* keep whatever is showing */ }
+}
+// Keep the pool fresh while the jobs page is open (someone else may take a
+// job, or admin may approve a request).
+setInterval(() => {
+  if(technician && !document.hidden && !jobsView.classList.contains('hidden')){ loadOpenJobs(true); loadPermissions(true); }
+}, 30000);
+
+/* ---------- Trip tracking ----------
+ * While any of the technician's jobs is "on the way" (status started) the
+ * phone watches its position: it logs a breadcrumb every 30 s (after
+ * moving 20 m+) and marks the job Reached automatically within
+ * ARRIVE_M metres of the site (if the site has coordinates). Browsers
+ * only track while the page is open. */
+const ARRIVE_M = 100;
+let watchId = null;
+let trackMeta = {};
+const reachingJobs = new Set();
+function distM(lat1, lng1, lat2, lng2){
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (lat2 - lat1) * r, dLng = (lng2 - lng1) * r;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*r) * Math.cos(lat2*r) * Math.sin(dLng/2)**2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+function fmtDist(m){ return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km'; }
+function activeTrips(){ return jobsCache.filter(j => j.status === 'started'); }
+
+function showTrackText(job, d, warn){
+  const hasCoords = job && job.site_lat != null;
+  let text;
+  if(warn) text = warn;
+  else if(d != null) text = `📍 On the way to ${job.site_name} — ${fmtDist(d)} away`;
+  else if(job) text = `📍 Tracking your trip to ${job.site_name}${hasCoords ? '' : ' — tap "I\'ve reached the site" when you arrive'}`;
+  else return;
+  trackBanner.textContent = text;
+  trackBanner.classList.remove('hidden');
+  if(job && selectedJob && selectedJob.id === job.id && selectedJob.status === 'started' && !jobDetailView.classList.contains('hidden')){
+    trackNote.textContent = text;
+    trackNote.classList.remove('hidden');
+    trackBanner.classList.add('hidden'); // the job page shows it in its own card
+  }
+}
+function syncTracking(){
+  const trips = activeTrips();
+  if(!trips.length){ stopTracking(); return; }
+  showTrackText(trips[0], null);
+  if(watchId !== null) return;
+  if(!navigator.geolocation){ showTrackText(trips[0], null, '⚠️ This device can\'t share its location, so your trip can\'t be tracked.'); return; }
+  watchId = navigator.geolocation.watchPosition(onTrackPosition, onTrackError,
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 30000 });
+}
+function stopTracking(){
+  if(watchId !== null && navigator.geolocation){ navigator.geolocation.clearWatch(watchId); }
+  watchId = null; trackMeta = {};
+  trackBanner.classList.add('hidden');
+  trackNote.classList.add('hidden');
+}
+function onTrackError(err){
+  const trips = activeTrips();
+  if(!trips.length) return;
+  if(err && err.code === 1){
+    showTrackText(trips[0], null, '⚠️ Location is blocked, so your trip can\'t be tracked. Allow location for this page in your browser settings.');
+  }
+  // other errors (timeouts, no signal) are transient — watchPosition keeps trying
+}
+function onTrackPosition(pos){
+  const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+  const now = Date.now();
+  activeTrips().forEach(job => {
+    const d = (job.site_lat != null && job.site_lng != null) ? distM(lat, lng, job.site_lat, job.site_lng) : null;
+    showTrackText(job, d);
+    const m = trackMeta[job.id] || (trackMeta[job.id] = {});
+    if(accuracy <= 100 && (m.t == null || (now - m.t >= 30000 && distM(lat, lng, m.lat, m.lng) >= 20))){
+      m.t = now; m.lat = lat; m.lng = lng;
+      gsRun('logJobLocation', job.id, lat, lng).catch(() => {});
+    }
+    if(d != null && d <= ARRIVE_M && accuracy <= 150 && !reachingJobs.has(job.id)) autoReach(job, lat, lng);
+  });
+}
+async function autoReach(job, lat, lng){
+  reachingJobs.add(job.id);
+  try{
+    await gsRunQueueable('reachSite', job.id, lat, lng);
+    await loadJobsList();
+    if(selectedJob && selectedJob.id === job.id){
+      const r = jobsCache.find(j => j.id === job.id);
+      if(r){ selectedJob = r; renderDetail(); }
+    }
+    trackBanner.textContent = `✅ You've reached ${job.site_name}. Open the job and tap "Start job" when you begin work.`;
+    trackBanner.classList.remove('hidden');
+    setTimeout(() => { if(!activeTrips().length) trackBanner.classList.add('hidden'); }, 12000);
+  } catch(e){
+    reachingJobs.delete(job.id); // try again on the next position update
+  }
+}
+trackBanner.addEventListener('click', () => { const j = activeTrips()[0]; if(j) openDetail(j); });
+
 function openDetail(job){
   selectedJob = job;
   renderDetail();
@@ -822,6 +1068,7 @@ function openDetail(job){
 function goBackToJobs(){
   selectedJob = null;
   showJobs();
+  loadOpenJobs(true); loadPermissions(true);
   loadJobsList(); // refresh, in case status/photos/bills changed while in detail
 }
 backBtn.addEventListener('click', goBackToJobs);
@@ -833,9 +1080,8 @@ function renderDetail(){
   detailBranchName.textContent = j.branch_name || '—';
   detailSiteName.textContent = j.site_name || '—';
   detailStartTime.textContent = fmtTime(j.start_time);
-  detailStatusPill.textContent = j.status.toUpperCase();
+  detailStatusPill.textContent = statusLabel(j.status);
   detailStatusPill.className = 'status-pill pill-' + j.status;
-  statusSelect.value = j.status;
 
   if(j.reach_time){
     detailReachedRow.classList.remove('hidden');
@@ -849,7 +1095,18 @@ function renderDetail(){
   } else {
     detailGpsRow.classList.add('hidden');
   }
-  if(j.status === 'reached' || j.status === 'completed'){
+  if(j.work_start_time){
+    detailWorkRow.classList.remove('hidden');
+    detailWorkTime.textContent = fmtTime(j.work_start_time);
+  } else {
+    detailWorkRow.classList.add('hidden');
+  }
+  reachedBtn.classList.toggle('hidden', j.status !== 'started');
+  startWorkBtn.classList.toggle('hidden', j.status !== 'reached');
+  completeBtn.classList.toggle('hidden', j.status !== 'in_progress');
+  cancelJobBtn.classList.toggle('hidden', j.status === 'completed' || j.status === 'cancelled');
+  if(j.status === 'started'){ syncTracking(); } else { trackNote.classList.add('hidden'); }
+  if(j.status === 'reached' || j.status === 'in_progress' || j.status === 'completed'){
     actualDistanceBlock.classList.remove('hidden');
     actualDistanceInput.value = j.actual_distance_km != null ? j.actual_distance_km : '';
   } else {
@@ -858,25 +1115,31 @@ function renderDetail(){
   statusError.textContent = '';
 }
 
-updateStatusBtn.addEventListener('click', async () => {
+async function refreshSelected(){
+  await loadJobsList();
+  const refreshed = selectedJob && jobsCache.find(j => j.id === selectedJob.id);
+  if(refreshed){ selectedJob = refreshed; renderDetail(); }
+}
+async function runAction(btn, label, work){
   statusError.textContent = '';
-  const newStatus = statusSelect.value;
-  setLoading(updateStatusBtn, true, 'Update');
-  try{
-    if(newStatus === 'reached' && selectedJob.status !== 'reached'){
-      const loc = await getLocation();
-      await gsRunQueueable('reachSite', selectedJob.id, loc.lat, loc.lng);
-    } else {
-      await gsRunQueueable('setJobStatus', selectedJob.id, newStatus, technician.id);
-    }
-    await loadJobsList();
-    const refreshed = jobsCache.find(j => j.id === selectedJob.id);
-    if(refreshed){ selectedJob = refreshed; renderDetail(); }
-  } catch(e){
-    statusError.textContent = e.message || 'Could not update status.';
-  } finally {
-    setLoading(updateStatusBtn, false, 'Update');
-  }
+  setLoading(btn, true, label);
+  try{ await work(); await refreshSelected(); }
+  catch(e){ statusError.textContent = e.message || 'Could not update the job.'; }
+  finally{ setLoading(btn, false, label); }
+}
+reachedBtn.addEventListener('click', () => runAction(reachedBtn, "I've reached the site", async () => {
+  const loc = await getLocation();
+  await gsRunQueueable('reachSite', selectedJob.id, loc.lat, loc.lng);
+}));
+startWorkBtn.addEventListener('click', () => runAction(startWorkBtn, 'Start job', () =>
+  gsRunQueueable('setJobStatus', selectedJob.id, 'in_progress', technician.id)));
+completeBtn.addEventListener('click', () => {
+  if(!confirm('Mark this job as completed?')) return;
+  runAction(completeBtn, 'Complete job', () => gsRunQueueable('setJobStatus', selectedJob.id, 'completed', technician.id));
+});
+cancelJobBtn.addEventListener('click', () => {
+  if(!confirm('Cancel this job? This can\'t be undone from here.')) return;
+  runAction(cancelJobBtn, 'Cancel job', () => gsRunQueueable('setJobStatus', selectedJob.id, 'cancelled', technician.id));
 });
 
 saveActualDistanceBtn.addEventListener('click', async () => {
