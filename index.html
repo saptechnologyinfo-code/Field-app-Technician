@@ -177,6 +177,20 @@
   .perm-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:.9rem;}
   .perm-row:last-child{border-bottom:none;}
   .track-banner{cursor:pointer;}
+  .team-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:.92rem;}
+  .team-row:last-child{border-bottom:none;}
+  .team-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+  .team-actions button{width:auto;margin:0;padding:7px 12px;font-size:.82rem;}
+  .btn-row{display:flex;gap:8px;}
+  .btn-row button{margin-top:10px;padding:12px;}
+  .team-item{padding:12px 0;border-bottom:1px solid var(--border);font-size:.92rem;}
+  .team-item:last-child{border-bottom:none;padding-bottom:0;}
+  .team-item:first-child{padding-top:2px;}
+  .tile-box{position:relative;}
+  .tile-badge{position:absolute;top:-6px;right:-6px;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:var(--danger);color:#fff;font-size:.8rem;font-weight:700;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .pill-lead{background:var(--selected-bg);color:var(--primary);}
+  .pill-joined{background:var(--success-bg);color:var(--success);}
+  .pill-invited,.pill-requested{background:var(--warn-bg);color:var(--warn);}
   .track-note{font-size:.85rem;color:var(--primary);background:var(--selected-bg);border-radius:10px;padding:10px 12px;margin-top:12px;}
   .action-stack{margin-top:12px;}
   .action-stack button{margin-top:8px;}
@@ -219,7 +233,7 @@
     <div id="menuView">
       <div class="tile-grid">
         <button class="tile" data-action="jobs" data-label="My Jobs">
-          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="30" y="18" width="42" height="62" rx="6"/><path d="M30 34h-8a5 5 0 0 0-5 5v30a8 8 0 0 0 8 8h5"/><text x="51" y="35" text-anchor="middle" font-size="12" font-weight="800" class="solid" font-family="Arial,sans-serif">JOBS</text><path d="M37 46h12M37 56h12M37 66h12M55 46v10"/><path d="M60 74l22-22 6 6-22 22-9 3z" class="solid"/></svg></span>
+          <span class="tile-box"><span class="tile-badge hidden" id="jobsBadge" aria-label="Team items waiting for you">0</span><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="30" y="18" width="42" height="62" rx="6"/><path d="M30 34h-8a5 5 0 0 0-5 5v30a8 8 0 0 0 8 8h5"/><text x="51" y="35" text-anchor="middle" font-size="12" font-weight="800" class="solid" font-family="Arial,sans-serif">JOBS</text><path d="M37 46h12M37 56h12M37 66h12M55 46v10"/><path d="M60 74l22-22 6 6-22 22-9 3z" class="solid"/></svg></span>
           <span class="tile-label">My Jobs</span>
         </button>
         <button class="tile" data-action="soon" data-label="Stock Manage">
@@ -273,6 +287,17 @@
         <div class="error" id="openJobsError"></div>
       </div>
 
+      <div class="card">
+        <div class="card-head">
+          <h2>Team jobs</h2>
+          <button class="link-btn" id="refreshTeamBtn">Refresh</button>
+        </div>
+        <div id="teamItemsList"></div>
+        <div class="section-title" style="margin-top:14px;">Jobs you can join</div>
+        <div id="joinableList"><div class="empty-note">No other jobs are under way right now.</div></div>
+        <div class="error" id="teamJobsError"></div>
+      </div>
+
       <div class="card hidden" id="permCard">
         <h2 style="font-size:1rem;margin-top:0;">Permission requests</h2>
         <div id="permList"></div>
@@ -307,6 +332,7 @@
         <div class="meta-row hidden" id="detailGpsRow"><span>GPS distance</span><b id="detailGpsDistance">—</b></div>
 
         <div class="track-note hidden" id="trackNote"></div>
+        <div class="track-note hidden" id="memberNote"></div>
         <div class="action-stack">
           <button class="btn-primary hidden" id="reachedBtn">I've reached the site</button>
           <button class="btn-primary hidden" id="startWorkBtn">Start job</button>
@@ -321,6 +347,12 @@
           <button class="btn-ghost" id="saveActualDistanceBtn">Save actual distance</button>
           <div class="error" id="actualDistanceError"></div>
         </div>
+
+        <div class="section-title">Team</div>
+        <div id="teamList"></div>
+        <button class="btn-ghost hidden" id="inviteBtn">Invite a technician</button>
+        <button class="btn-ghost hidden" id="leaveTeamBtn">Leave this team</button>
+        <div class="error" id="teamError"></div>
 
         <div class="section-title">Job photos</div>
         <input type="file" id="photoInput" accept="image/*" multiple />
@@ -358,6 +390,16 @@
   <button class="drawer-item" id="settingsBtn">Change password</button>
   <button class="drawer-item danger" id="logoutBtn">Log out</button>
 </aside>
+
+<div class="modal-overlay hidden" id="inviteModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:400;padding:20px;">
+  <div class="card" style="max-width:360px;width:100%;margin:0;max-height:80vh;overflow:auto;">
+    <h2 style="font-size:1rem;margin-top:0;">Invite a technician</h2>
+    <div class="sub" style="margin-bottom:8px;">They get the invite in their Team jobs and join once they accept.</div>
+    <div id="inviteList"></div>
+    <div class="error" id="inviteError"></div>
+    <button class="btn-ghost" id="inviteCloseBtn">Close</button>
+  </div>
+</div>
 
 <div class="modal-overlay hidden" id="pwModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;">
   <div class="card" style="max-width:360px;width:100%;margin:0;">
@@ -637,6 +679,15 @@ const openJobsError = document.getElementById('openJobsError');
 const permCard = document.getElementById('permCard');
 const permList = document.getElementById('permList');
 const trackBanner = document.getElementById('trackBanner');
+const memberNote = document.getElementById('memberNote');
+const teamList = document.getElementById('teamList');
+const teamError = document.getElementById('teamError');
+const inviteBtn = document.getElementById('inviteBtn');
+const leaveTeamBtn = document.getElementById('leaveTeamBtn');
+const teamItemsList = document.getElementById('teamItemsList');
+const joinableList = document.getElementById('joinableList');
+const teamJobsError = document.getElementById('teamJobsError');
+const jobsBadge = document.getElementById('jobsBadge');
 
 const actualDistanceBlock = document.getElementById('actualDistanceBlock');
 const actualDistanceInput = document.getElementById('actualDistanceInput');
@@ -670,6 +721,10 @@ function fmtTime(ts){
 }
 const STATUS_LABEL = { open:'OPEN', started:'ON THE WAY', reached:'REACHED', in_progress:'IN PROGRESS', completed:'COMPLETED', cancelled:'CANCELLED' };
 function statusLabel(st){ return STATUS_LABEL[st] || String(st).toUpperCase(); }
+function teamNames(j){
+  const names = [ (j.technician_name || '—') + ' (lead)' ].concat((j.members || []).map(m => m.name));
+  return names.join(', ');
+}
 function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 // Backend raises 'SITE_BUSY: ...' when a site already has an active job.
 function isSiteBusy(e){ return /^SITE_BUSY:/.test((e && e.message) || ''); }
@@ -812,8 +867,8 @@ startPermBtn.addEventListener('click', async () => {
 });
 
 /* ---------- Job list ---------- */
-async function loadJobsList(){
-  jobsList.innerHTML = skeletonJobRows(3);
+async function loadJobsList(silent){
+  if(!silent) jobsList.innerHTML = skeletonJobRows(3);
   try{
     const jobs = await gsRun('listJobsForTechnician', technician.id);
     jobsCache = jobs;
@@ -824,6 +879,7 @@ async function loadJobsList(){
         <div class="job-row-left">
           <b>${j.job_number}</b>
           <span>${j.branch_name ? j.branch_name + ' · ' : ''}${j.site_name} · ${fmtTime(j.start_time)}</span>
+          ${(j.members && j.members.length) ? `<span>👥 ${esc(teamNames(j))}</span>` : ''}
         </div>
         <span class="status-pill pill-${j.status}">${statusLabel(j.status)}</span>
       </div>
@@ -835,7 +891,7 @@ async function loadJobsList(){
       });
     });
   } catch(e){
-    jobsList.innerHTML = '<div class="empty-note">Could not load jobs.</div>';
+    if(!silent) jobsList.innerHTML = '<div class="empty-note">Could not load jobs.</div>';
   }
 }
 
@@ -857,7 +913,7 @@ function showSection(label, iconHtml){
 }
 
 menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => {
-  if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); }
+  if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); loadTeamJobs(); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
 document.getElementById('jobsBackBtn').addEventListener('click', showHome);
@@ -964,8 +1020,17 @@ async function loadPermissions(silent){
 }
 // Keep the pool fresh while the jobs page is open (someone else may take a
 // job, or admin may approve a request).
-setInterval(() => {
-  if(technician && !document.hidden && !jobsView.classList.contains('hidden')){ loadOpenJobs(true); loadPermissions(true); }
+setInterval(async () => {
+  if(!technician || document.hidden) return;
+  loadTeamJobs(true); // also keeps the My Jobs badge current
+  if(!jobsView.classList.contains('hidden')){ loadOpenJobs(true); loadPermissions(true); }
+  if(!jobDetailView.classList.contains('hidden') && selectedJob){
+    const before = JSON.stringify([selectedJob.status, selectedJob.reach_time, selectedJob.work_start_time, selectedJob.members]);
+    await loadJobsList(true);
+    const r = jobsCache.find(j => j.id === selectedJob.id);
+    if(r && JSON.stringify([r.status, r.reach_time, r.work_start_time, r.members]) !== before){ selectedJob = r; renderDetail(); }
+    loadTeam(true);
+  }
 }, 30000);
 
 /* ---------- Trip tracking ----------
@@ -985,7 +1050,8 @@ function distM(lat1, lng1, lat2, lng2){
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 function fmtDist(m){ return m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km'; }
-function activeTrips(){ return jobsCache.filter(j => j.status === 'started'); }
+// Only the team lead's phone tracks the trip; members follow along.
+function activeTrips(){ return jobsCache.filter(j => j.status === 'started' && j.my_role !== 'member'); }
 
 function showTrackText(job, d, warn){
   const hasCoords = job && job.site_lat != null;
@@ -1057,6 +1123,198 @@ async function autoReach(job, lat, lng){
 }
 trackBanner.addEventListener('click', () => { const j = activeTrips()[0]; if(j) openDetail(j); });
 
+
+/* ---------- Teams ----------
+ * The technician who took a job is its lead. Others join in two ways:
+ *  - the lead invites them (they accept), or
+ *  - they ask to join a job under way and the lead grants it.
+ * Members see the job in My jobs and can add photos and bills; only the
+ * lead changes the job's status. */
+let teamRows = [], teamJobId = null;
+const ACTIVE_STATUSES = ['started', 'reached', 'in_progress'];
+const isActiveJob = j => !!j && ACTIVE_STATUSES.includes(j.status);
+const isLeadOf = j => !!j && j.my_role !== 'member';
+
+async function loadTeamJobs(silent){
+  if(!technician) return;
+  if(!silent){
+    teamItemsList.innerHTML = '';
+    joinableList.innerHTML = skeletonJobRows(1);
+  }
+  try{
+    const [items, joinable] = await Promise.all([
+      gsRun('listMyTeamItems', technician.id),
+      gsRun('listJoinableJobs', technician.id)
+    ]);
+    const waiting = items.filter(i => i.kind === 'invite' || i.kind === 'join_request').length;
+    jobsBadge.textContent = waiting;
+    jobsBadge.classList.toggle('hidden', waiting === 0);
+
+    teamItemsList.innerHTML = items.map(i => {
+      const job = `<b>${esc(i.job_number)}</b> at ${esc(i.site_name)}`;
+      if(i.kind === 'invite') return `
+        <div class="team-item fade-in">
+          <b>${esc(i.lead_name)}</b> invited you to join ${job}.
+          <div class="btn-row">
+            <button class="btn-primary" data-team="accept" data-job="${i.job_id}">Accept</button>
+            <button class="btn-ghost" data-team="decline" data-job="${i.job_id}">Decline</button>
+          </div>
+        </div>`;
+      if(i.kind === 'join_request') return `
+        <div class="team-item fade-in">
+          <b>${esc(i.technician_name)}</b> wants to join your job ${job}.
+          <div class="btn-row">
+            <button class="btn-primary" data-team="approve" data-job="${i.job_id}" data-tech="${i.technician_id}">Grant</button>
+            <button class="btn-ghost" data-team="deny" data-job="${i.job_id}" data-tech="${i.technician_id}">Decline</button>
+          </div>
+        </div>`;
+      return `
+        <div class="team-item fade-in">
+          You asked to join ${job}. Waiting for <b>${esc(i.lead_name)}</b>.
+          <div class="btn-row"><button class="btn-ghost" data-team="cancel" data-job="${i.job_id}">Cancel request</button></div>
+        </div>`;
+    }).join('');
+
+    joinableList.innerHTML = joinable.length ? joinable.map(j => `
+      <div class="open-job fade-in">
+        <div class="open-job-top"><b>${esc(j.job_number)}</b><span class="status-pill pill-${j.status}">${statusLabel(j.status)}</span></div>
+        <div class="open-job-meta">${j.branch_name ? esc(j.branch_name) + ' · ' : ''}${esc(j.site_name)}</div>
+        <div class="open-job-meta">Led by ${esc(j.lead_name)} · Team of ${j.team_size}</div>
+        ${j.my_status === 'requested'
+          ? '<button class="btn-ghost" disabled>Request sent</button>'
+          : `<button class="btn-ghost" data-join="${j.id}">Ask to join</button>`}
+      </div>`).join('') : '<div class="empty-note fade-in">No other jobs are under way right now.</div>';
+  } catch(e){
+    if(!silent) joinableList.innerHTML = '<div class="empty-note">Could not load team jobs.</div>';
+  }
+}
+teamItemsList.addEventListener('click', e => {
+  const b = e.target.closest('[data-team]'); if(!b) return;
+  teamAction(b.dataset.team, b.dataset.job, b.dataset.tech, b, teamJobsError);
+});
+joinableList.addEventListener('click', async e => {
+  const b = e.target.closest('[data-join]'); if(!b) return;
+  teamJobsError.textContent = '';
+  setLoading(b, true, 'Ask to join');
+  try{
+    await gsRun('requestJoinJob', b.dataset.join, technician.id);
+    await loadTeamJobs(true);
+  } catch(err){
+    teamJobsError.textContent = err.message || 'Could not send the request.';
+    setLoading(b, false, 'Ask to join');
+  }
+});
+document.getElementById('refreshTeamBtn').addEventListener('click', () => loadTeamJobs());
+
+// One place for every accept / decline / grant / remove tap.
+async function teamAction(kind, jobId, techId, btn, errEl){
+  errEl.textContent = '';
+  const label = btn.textContent;
+  setLoading(btn, true, label);
+  try{
+    if(kind === 'accept')       await gsRun('respondJobInvite', jobId, technician.id, true);
+    else if(kind === 'decline') await gsRun('respondJobInvite', jobId, technician.id, false);
+    else if(kind === 'approve') await gsRun('decideJoinRequest', jobId, technician.id, techId, true);
+    else if(kind === 'deny')    await gsRun('decideJoinRequest', jobId, technician.id, techId, false);
+    else if(kind === 'cancel')  await gsRun('removeJobMember', jobId, technician.id, technician.id);
+    else if(kind === 'remove')  await gsRun('removeJobMember', jobId, techId, technician.id);
+    else if(kind === 'leave')   await gsRun('removeJobMember', jobId, technician.id, technician.id);
+    await loadJobsList(true);
+    loadTeamJobs(true);
+    if(selectedJob && selectedJob.id === jobId && kind !== 'leave'){
+      const r = jobsCache.find(j => j.id === jobId);
+      if(r){ selectedJob = r; renderDetail(); }
+      loadTeam(true);
+    }
+    if(kind === 'accept'){ const mine = jobsCache.find(j => j.id === jobId); if(mine) openDetail(mine); }
+    if(kind === 'leave') goBackToJobs();
+  } catch(e){
+    errEl.textContent = e.message || 'Could not update the team.';
+    setLoading(btn, false, label);
+  }
+}
+
+// Team list inside the job page.
+async function loadTeam(silent){
+  if(!selectedJob) return;
+  const id = selectedJob.id;
+  if(!silent) teamList.innerHTML = skeletonLines(2);
+  try{
+    const rows = await gsRun('listJobTeam', id);
+    if(!selectedJob || selectedJob.id !== id) return;
+    teamRows = rows; teamJobId = id;
+    renderTeam();
+  } catch(e){ if(!silent) teamList.innerHTML = '<div class="sub">Could not load the team.</div>'; }
+}
+function renderTeam(){
+  const j = selectedJob;
+  if(!j || teamJobId !== j.id) return;
+  const lead = isLeadOf(j), active = isActiveJob(j);
+  const pill = { lead:['pill-lead','LEAD'], joined:['pill-joined','TEAM'], invited:['pill-invited','INVITED'], requested:['pill-requested','ASKED TO JOIN'] };
+  teamList.innerHTML = teamRows.map(m => {
+    const me = m.technician_id === technician.id ? ' (you)' : '';
+    let actions = '';
+    if(lead && active){
+      if(m.status === 'requested') actions = `<button class="btn-primary" data-team="approve" data-tech="${m.technician_id}">Grant</button><button class="btn-ghost" data-team="deny" data-tech="${m.technician_id}">Decline</button>`;
+      else if(m.status === 'invited') actions = `<button class="btn-ghost" data-team="remove" data-tech="${m.technician_id}">Cancel invite</button>`;
+      else if(m.status === 'joined') actions = `<button class="btn-ghost" data-team="remove" data-tech="${m.technician_id}">Remove</button>`;
+    }
+    return `<div class="team-row fade-in">
+      <span><b>${esc(m.name)}</b>${me}</span>
+      <span class="team-actions"><span class="status-pill ${pill[m.status][0]}">${pill[m.status][1]}</span>${actions}</span>
+    </div>`;
+  }).join('') || '<div class="sub">No team yet.</div>';
+  inviteBtn.classList.toggle('hidden', !(lead && active));
+  leaveTeamBtn.classList.toggle('hidden', !(!lead && active));
+}
+teamList.addEventListener('click', e => {
+  const b = e.target.closest('[data-team]'); if(!b || !selectedJob) return;
+  if(b.dataset.team === 'remove' && !confirm('Remove this person from the team?')) return;
+  teamAction(b.dataset.team, selectedJob.id, b.dataset.tech, b, teamError);
+});
+leaveTeamBtn.addEventListener('click', () => {
+  if(!confirm('Leave this team? The job will disappear from your list.')) return;
+  teamAction('leave', selectedJob.id, technician.id, leaveTeamBtn, teamError);
+});
+
+// Invite picker.
+const inviteModal = document.getElementById('inviteModal');
+const inviteList = document.getElementById('inviteList');
+const inviteError = document.getElementById('inviteError');
+inviteBtn.addEventListener('click', async () => {
+  inviteError.textContent = '';
+  inviteList.innerHTML = skeletonLines(3);
+  inviteModal.classList.remove('hidden');
+  try{
+    const [techs, team] = await Promise.all([gsRun('listTechnicians'), gsRun('listJobTeam', selectedJob.id)]);
+    // Everyone active who isn't already on the team (invited / asked people are
+    // shown in the team list; inviting someone who asked simply grants them).
+    const onTeam = new Set(teamRows.filter(m => m.status === 'lead' || m.status === 'joined').map(m => m.technician_id));
+    const invited = new Set(teamRows.filter(m => m.status === 'invited').map(m => m.technician_id));
+    const list = techs.filter(t => t.active && t.role === 'technician' && t.id !== technician.id && !onTeam.has(t.id));
+    inviteList.innerHTML = list.length ? list.map(t => `
+      <div class="team-row">
+        <span>${esc(t.name)}</span>
+        ${invited.has(t.id) ? '<span class="status-pill pill-invited">INVITED</span>'
+          : `<button class="btn-primary" style="width:auto;margin:0;padding:8px 14px;" data-invite="${t.id}">Invite</button>`}
+      </div>`).join('') : '<div class="empty-note">Everyone is already on this job.</div>';
+  } catch(e){ inviteList.innerHTML = '<div class="empty-note">Could not load technicians.</div>'; }
+});
+inviteList.addEventListener('click', async e => {
+  const b = e.target.closest('[data-invite]'); if(!b) return;
+  inviteError.textContent = '';
+  setLoading(b, true, 'Invite');
+  try{
+    await gsRun('inviteTechnician', selectedJob.id, technician.id, b.dataset.invite);
+    b.outerHTML = '<span class="status-pill pill-invited">INVITED</span>';
+    loadTeam(true);
+  } catch(err){
+    inviteError.textContent = err.message || 'Could not send the invite.';
+    setLoading(b, false, 'Invite');
+  }
+});
+document.getElementById('inviteCloseBtn').addEventListener('click', () => { inviteModal.classList.add('hidden'); loadTeam(true); });
+
 function openDetail(job){
   selectedJob = job;
   renderDetail();
@@ -1064,11 +1322,13 @@ function openDetail(job){
   loadPhotos();
   loadBills();
   loadFunds();
+  teamJobId = null;
+  loadTeam();
 }
 function goBackToJobs(){
   selectedJob = null;
   showJobs();
-  loadOpenJobs(true); loadPermissions(true);
+  loadOpenJobs(true); loadPermissions(true); loadTeamJobs(true);
   loadJobsList(); // refresh, in case status/photos/bills changed while in detail
 }
 backBtn.addEventListener('click', goBackToJobs);
@@ -1101,12 +1361,20 @@ function renderDetail(){
   } else {
     detailWorkRow.classList.add('hidden');
   }
-  reachedBtn.classList.toggle('hidden', j.status !== 'started');
-  startWorkBtn.classList.toggle('hidden', j.status !== 'reached');
-  completeBtn.classList.toggle('hidden', j.status !== 'in_progress');
-  cancelJobBtn.classList.toggle('hidden', j.status === 'completed' || j.status === 'cancelled');
-  if(j.status === 'started'){ syncTracking(); } else { trackNote.classList.add('hidden'); }
-  if(j.status === 'reached' || j.status === 'in_progress' || j.status === 'completed'){
+  const lead = isLeadOf(j);
+  reachedBtn.classList.toggle('hidden', !(lead && j.status === 'started'));
+  startWorkBtn.classList.toggle('hidden', !(lead && j.status === 'reached'));
+  completeBtn.classList.toggle('hidden', !(lead && j.status === 'in_progress'));
+  cancelJobBtn.classList.toggle('hidden', !(lead && j.status !== 'completed' && j.status !== 'cancelled'));
+  if(!lead){
+    memberNote.textContent = `You're on ${j.technician_name || 'the lead'}'s team. They update the job's status — you can add photos and bills.`;
+    memberNote.classList.remove('hidden');
+  } else {
+    memberNote.classList.add('hidden');
+  }
+  if(j.status === 'started' && lead){ syncTracking(); } else { trackNote.classList.add('hidden'); }
+  renderTeam();
+  if(lead && (j.status === 'reached' || j.status === 'in_progress' || j.status === 'completed')){
     actualDistanceBlock.classList.remove('hidden');
     actualDistanceInput.value = j.actual_distance_km != null ? j.actual_distance_km : '';
   } else {
@@ -1262,6 +1530,7 @@ async function enterApp(){
   await loadBranches();
   await loadSites();
   await loadJobsList();
+  loadTeamJobs(true);
 }
 
 (function init(){
