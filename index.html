@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Technician — Job Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
   :root{
     --primary:#1f6feb; --primary-dark:#164b9e; --bg:#f4f6f9; --card:#ffffff;
@@ -18,11 +21,11 @@
     --tile-shadow:0 6px 10px -4px rgba(20,50,80,.35);
   }
   :root[data-theme="dark"]{
-    --primary:#4c8dff; --primary-dark:#3a72d9; --bg:#10151b; --card:#1a212a;
-    --text:#e7ebef; --muted:#8b95a1; --border:#2a323d;
+    --primary:#3d8bff; --primary-dark:#2f74dc; --bg:#041227; --card:#0a1d3b;
+    --text:#eaf1fb; --muted:#8fa3bf; --border:#1a3560;
     --success:#3ddc97; --success-bg:#123425; --warn:#e0b34d; --warn-bg:#3a2f10;
-    --grey-bg:#232b34; --danger:#ff6b6b;
-    --input-bg:#12181f; --hover-bg:#1f2731; --danger-bg:#3a1414; --selected-bg:#1c2a3d;
+    --grey-bg:#10264a; --danger:#ff6b6b;
+    --input-bg:#071a35; --hover-bg:#0f2547; --danger-bg:#3a1414; --selected-bg:#102a52;
     --skeleton-base:#232b34; --skeleton-highlight:#2e3844;
     --shadow:0 1px 3px rgba(0,0,0,.3);
     --bar:#1b2c3b; --bar-text:#eaf3fb;
@@ -30,7 +33,7 @@
     --tile-shadow:0 6px 12px -4px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s ease, color .2s ease;}
+  body{margin:0;font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .2s ease, color .2s ease;}
   .card, input, select, button, .job-row{ transition:background .2s ease, border-color .2s ease, color .2s ease; }
   @keyframes shimmer{ 0%{background-position:-400px 0;} 100%{background-position:400px 0;} }
   .skeleton{
@@ -48,7 +51,7 @@
     font-size:1.15rem; display:flex; align-items:center; justify-content:center;
     cursor:pointer; z-index:500; padding:0; margin:0;
   }
-  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px;}
+  .wrap{max-width:600px;margin:0 auto;padding:20px 16px 60px;}
   h1{font-size:1.25rem;margin:0 0 4px;}
   .sub{color:var(--muted);font-size:.9rem;margin-bottom:20px;}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
@@ -101,41 +104,44 @@
   .status-row{display:flex;gap:8px;align-items:center;margin-top:10px;}
   .status-row select{flex:1;margin:0;}
   .status-row button{width:auto;margin:0;padding:12px 16px;}
-  /* ---------- App bar + tile menu ---------- */
-  .app-bar{
-    display:flex;align-items:center;justify-content:space-between;
-    background:var(--bar);color:var(--bar-text);
-    margin:-20px -16px 8px;padding:0 8px 0 20px;height:60px;
-    position:sticky;top:0;z-index:200;border-radius:0 0 6px 6px;
-    transition:background .2s ease;
-  }
-  .app-bar h1{margin:0;font-size:1.3rem;font-weight:700;color:var(--bar-text);letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .app-bar .menu-btn{
-    width:48px;height:48px;margin:0;padding:0;background:none;border-radius:12px;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  }
-  .app-bar .menu-btn span{display:block;width:26px;height:4px;border-radius:2px;background:var(--bar-text);}
-  .app-bar .menu-btn:focus-visible{outline:2px solid var(--bar-text);outline-offset:2px;}
-  .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:26px 22px;padding:26px 10px 8px;}
-  .tile{
-    background:none;border:none;padding:0;margin:0;width:100%;cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--tile-label);
-    -webkit-tap-highlight-color:transparent;
-  }
-  .tile-box{
-    width:100%;aspect-ratio:1/1;border-radius:14px;
-    background:linear-gradient(180deg,var(--tile) 0%,var(--tile) 90%,var(--tile-edge) 100%);
-    box-shadow:var(--tile-shadow);
-    display:flex;align-items:center;justify-content:center;
-    transition:transform .12s ease, filter .12s ease;
-  }
-  .tile:active .tile-box{transform:scale(.96);filter:brightness(.94);}
-  .tile:focus-visible .tile-box{outline:3px solid var(--primary);outline-offset:3px;}
-  .tile-box svg{width:72%;height:72%;fill:none;stroke:var(--tile-icon);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;}
-  .tile-box svg .solid{fill:var(--tile-icon);stroke:none;}
-  .tile-label{font-size:1.02rem;font-weight:700;text-align:center;line-height:1.25;min-height:2.5em;}
+  /* ---------- App bar + dashboard ---------- */
+  .app-bar{display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#0b2d58 0%,#082447 100%);color:#fff;margin:-20px -16px 0;padding:0 10px 0 14px;height:66px;position:sticky;top:0;z-index:200;box-shadow:0 8px 20px -6px rgba(0,0,0,.6);border-bottom:1px solid rgba(80,140,255,.12);}
+  .brand{width:46px;height:46px;flex:none;}
+  .app-title{flex:1;min-width:0;line-height:1.2;}
+  .app-bar h1{margin:0;font-size:1.2rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .app-sub{display:block;font-size:.86rem;color:#c9dcf3;margin-top:2px;white-space:nowrap;}
+  .app-bar .icon-btn,.app-bar .menu-btn{position:relative;width:46px;height:46px;margin:0;padding:0;background:none;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none;}
+  .app-bar .icon-btn svg{width:28px;height:28px;fill:none;stroke:#fff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .bell-dot{position:absolute;top:7px;right:10px;width:12px;height:12px;border-radius:50%;background:#ff4a4a;box-shadow:0 0 0 2px #0a2a50;}
+  .app-bar .menu-btn{flex-direction:column;gap:6px;}
+  .app-bar .menu-btn span{display:block;width:25px;height:3.5px;border-radius:2px;background:#fff;}
+  .app-bar .icon-btn:focus-visible,.app-bar .menu-btn:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+  #menuView{margin:0 -16px;container-type:inline-size;}
+  .tile-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.3cqw;padding:3.1cqw 2.06cqw 6cqw;}
+  .tile{position:relative;overflow:hidden;display:flex;align-items:center;gap:2.2cqw;width:100%;margin:0;padding:2.2cqw 2.2cqw 2.2cqw 2.4cqw;min-height:29.3cqw;text-align:left;color:#fff;font-weight:400;border:1.5px solid var(--edge);border-radius:2.9cqw;background:var(--bgc);box-shadow:0 12px 26px -12px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08);cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .12s ease,filter .12s ease;}
+  .tile::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(118deg,transparent 56%,rgba(255,255,255,.055) 56.2%,transparent 80%);}
+  .tile:active{transform:scale(.98);filter:brightness(.95);}
+  .tile:focus-visible{outline:3px solid #fff;outline-offset:2px;}
+  .t-blue{--bgc:linear-gradient(135deg,#0f5fdc 0%,#0a3f9f 55%,#07286a 100%);--edge:#1f78f0;--accent:#22c8f2;--arw:rgba(8,40,110,.75);--arwe:#2a7df0;}
+  .t-teal{--bgc:linear-gradient(135deg,#0b7a74 0%,#0a5058 55%,#073040 100%);--edge:#12b090;--accent:#1fe58c;--arw:rgba(4,40,45,.7);--arwe:#12a58a;}
+  .t-violet{--bgc:linear-gradient(135deg,#6b3fd4 0%,#412398 55%,#26156b 100%);--edge:#5b37c6;--accent:#b36bea;--arw:rgba(30,15,100,.7);--arwe:#6c48d8;}
+  .t-amber{--bgc:linear-gradient(135deg,#dd7618 0%,#9b4b12 55%,#5c2c0e 100%);--edge:#cf6a1a;--accent:#f2a21c;--arw:#1f1f1f;--arwe:#3a3a3a;}
+  .t-wide{grid-column:1/-1;min-height:30.3cqw;padding-left:5.4cqw;gap:6cqw;}
+  .tile .tile-box{position:relative;flex:none;width:17.4cqw;aspect-ratio:1;display:flex;align-items:center;justify-content:center;}
+  .t-wide .tile-box{width:24cqw;}
+  .tile .tile-box::before{content:"";position:absolute;inset:-10% -14%;border-radius:50%;background:radial-gradient(circle,rgba(0,10,45,.5),rgba(0,10,45,0) 70%);}
+  .tile .tile-box svg{position:relative;width:100%;height:100%;overflow:visible;filter:drop-shadow(0 6px 8px rgba(0,0,0,.35));}
+  .tile .tile-badge{z-index:3;top:2%;right:2%;}
+  .tile-body{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;}
+  .tile-label{display:block;font-size:max(13px,2.95cqw);font-weight:700;line-height:1.15;letter-spacing:-.01em;}
+  .tile-bar{display:block;width:5.3cqw;height:max(3px,.5cqw);border-radius:4px;background:var(--accent);margin:max(6px,1.7cqw) 0 max(6px,1.5cqw);}
+  .tile-desc{display:block;font-size:max(11px,1.9cqw);line-height:1.45;color:rgba(255,255,255,.86);padding-right:2.5cqw;}
+  .go{position:absolute;right:1.6cqw;bottom:3.1cqw;width:5.9cqw;height:5.9cqw;min-width:30px;min-height:30px;border-radius:50%;background:var(--arw);border:1.5px solid var(--arwe);display:flex;align-items:center;justify-content:center;}
+  .t-wide .go{width:6.9cqw;height:6.9cqw;right:2.3cqw;bottom:6.2cqw;}
+  .go svg{width:50%;height:50%;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+  .soon-card .tile-box{width:150px;aspect-ratio:1;margin:0 auto 16px;display:flex;}
+  .soon-card .tile-box svg{width:100%;height:100%;}
   .soon-card{text-align:center;padding:36px 20px;}
-  .soon-card .tile-box{width:96px;margin:0 auto 16px;}
   .soon-card h2{margin:0 0 6px;font-size:1.15rem;}
   /* ---------- Side menu ---------- */
   .drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .2s ease;}
@@ -186,7 +192,6 @@
   .team-item{padding:12px 0;border-bottom:1px solid var(--border);font-size:.92rem;}
   .team-item:last-child{border-bottom:none;padding-bottom:0;}
   .team-item:first-child{padding-top:2px;}
-  .tile-box{position:relative;}
   .tile-badge{position:absolute;top:-6px;right:-6px;min-width:24px;height:24px;padding:0 7px;border-radius:12px;background:var(--danger);color:#fff;font-size:.8rem;font-weight:700;line-height:24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.35);}
   .pill-lead{background:var(--selected-bg);color:var(--primary);}
   .pill-joined{background:var(--success-bg);color:var(--success);}
@@ -221,7 +226,9 @@
 
   <div id="appView" class="hidden">
     <header class="app-bar">
-      <h1>Hi <span id="techName">—</span></h1>
+      <svg class="brand" viewBox="0 0 64 64" aria-hidden="true"><defs><mask id="wm"><rect width="64" height="64" fill="#fff"/><polygon points="45.2,25.2 38.8,18.8 52.9,4.7 59.3,11.1" fill="#000"/></mask></defs><path d="M12 52L35 29" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="42" cy="22" r="12" fill="#fff" mask="url(#wm)"/><circle cx="46" cy="46" r="7" fill="none" stroke="#2f8cff" stroke-width="6"/><circle cx="46" cy="46" r="11.5" fill="none" stroke="#2f8cff" stroke-width="5" stroke-dasharray="5 4.03"/></svg>
+      <div class="app-title"><h1>Hi <span id="techName">—</span></h1><span class="app-sub">Technician Dashboard</span></div>
+      <button class="icon-btn" id="bellBtn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M5.5 17h13l-1.7-2.2V10a4.8 4.8 0 0 0-9.6 0v4.8z"/><path d="M10 20.2a2 2 0 0 0 4 0"/></svg><span class="bell-dot" id="bellDot"></span></button>
       <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-haspopup="true"><span></span><span></span><span></span></button>
     </header>
 
@@ -232,25 +239,30 @@
     <!-- ===================== MAIN MENU ===================== -->
     <div id="menuView">
       <div class="tile-grid">
-        <button class="tile" data-action="jobs" data-label="My Jobs">
-          <span class="tile-box"><span class="tile-badge hidden" id="jobsBadge" aria-label="Team items waiting for you">0</span><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="30" y="18" width="42" height="62" rx="6"/><path d="M30 34h-8a5 5 0 0 0-5 5v30a8 8 0 0 0 8 8h5"/><text x="51" y="35" text-anchor="middle" font-size="12" font-weight="800" class="solid" font-family="Arial,sans-serif">JOBS</text><path d="M37 46h12M37 56h12M37 66h12M55 46v10"/><path d="M60 74l22-22 6 6-22 22-9 3z" class="solid"/></svg></span>
-          <span class="tile-label">My Jobs</span>
+        <button class="tile t-blue" data-action="jobs" data-label="My Jobs">
+          <span class="tile-box"><span class="tile-badge hidden" id="jobsBadge" aria-label="Team items waiting for you">0</span><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gj" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4aa3ff"/><stop offset="1" stop-color="#1450d0"/></linearGradient></defs><g transform="rotate(-9 100 108)"><rect x="26" y="34" width="112" height="146" rx="12" fill="url(#gj)"/><rect x="37" y="48" width="90" height="122" rx="6" fill="#f4f8fe"/><rect x="52" y="22" width="60" height="28" rx="9" fill="#1b2a4d"/><rect x="64" y="14" width="36" height="16" rx="6" fill="#2d3f6c"/><text x="82" y="84" text-anchor="middle" font-size="23" font-weight="900" fill="#1a2f6b" font-family="Arial Black,Arial,sans-serif">JOBS</text><g fill="#fff" stroke="#1e66e0" stroke-width="3"><rect x="47" y="96" width="16" height="16" rx="3"/><rect x="47" y="120" width="16" height="16" rx="3"/><rect x="47" y="144" width="16" height="16" rx="3"/></g><path d="M50 104l4 4 7-8M50 128l4 4 7-8M50 152l4 4 7-8" fill="none" stroke="#1e66e0" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><g fill="#b8c9e8"><rect x="70" y="100" width="48" height="6" rx="3"/><rect x="70" y="124" width="48" height="6" rx="3"/><rect x="70" y="148" width="48" height="6" rx="3"/></g></g><g transform="rotate(38 160 100)"><rect x="150" y="38" width="20" height="104" rx="4" fill="url(#gj)"/><rect x="150" y="38" width="20" height="10" rx="4" fill="#8fc2ff"/><polygon points="150,142 170,142 160,166" fill="#f0d7b0"/><polygon points="156,157 164,157 160,166" fill="#1b2a4d"/></g></svg></span>
+          <span class="tile-body"><span class="tile-label">My Jobs</span><i class="tile-bar"></i><span class="tile-desc">View and manage your assigned jobs and tasks.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile" data-action="soon" data-label="Stock Manage">
-          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><path d="M18 34l30-14 30 14v34L48 82 18 68z"/><path d="M18 34l30 14 30-14M48 48v34"/><circle cx="72" cy="68" r="15" class="solid" style="fill:var(--tile)"/><circle cx="72" cy="68" r="15"/><path d="M65 68l5 5 9-10"/></svg></span>
-          <span class="tile-label">Stock Manage</span>
+        <button class="tile t-teal" data-action="soon" data-label="Stock Manage">
+          <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><radialGradient id="gs" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#4fe892"/><stop offset="1" stop-color="#0fa357"/></radialGradient></defs><polygon points="100,40 160,68 100,96 40,68" fill="#f0c88a"/><polygon points="40,68 100,96 100,168 40,140" fill="#d99a52"/><polygon points="100,96 160,68 160,140 100,168" fill="#c07f3a"/><polygon points="64,57 76,51 136,79 124,85" fill="#e3b06c"/><g transform="matrix(1 .4667 0 1 0 0)"><rect x="50" y="88" width="26" height="22" rx="2" fill="#fff"/><path d="M54 93v12M57 93v12M60 93v12M64 93v12M67 93v12M71 93v12" stroke="#1d3557" stroke-width="1.6"/></g><circle cx="142" cy="138" r="34" fill="url(#gs)" stroke="#d9ffe9" stroke-width="3"/><path d="M124 138l12 12 22-26" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="tile-body"><span class="tile-label">Stock Manage</span><i class="tile-bar"></i><span class="tile-desc">Check stock levels, manage parts and inventory.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile" data-action="soon" data-label="Salary &amp; Attendance Updates">
-          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="40" cy="26" r="9" class="solid"/><path d="M20 82V52q0-12 14-14h12q6 1 10 6" /><path d="M20 82h34V50" /><path d="M46 44l10 10" /><path d="M66 46l-8 12" /><path d="M70 50c-6 0-12 6-12 16 0 8 4 14 12 14s12-6 12-14c0-10-6-16-12-16z"/><path d="M66 42l4 8 4-8" /><path d="M72 60v14M75 62h-5a2.5 2.5 0 0 0 0 5h4a2.5 2.5 0 0 1 0 5h-5"/></svg></span>
-          <span class="tile-label">Salary &amp; Attendance Updates</span>
+        <button class="tile t-violet" data-action="soon" data-label="Salary &amp; Attendance Updates">
+          <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58aaff"/><stop offset="1" stop-color="#2b6fe6"/></linearGradient><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffdf5a"/><stop offset="1" stop-color="#f0a010"/></linearGradient></defs><circle cx="66" cy="56" r="28" fill="url(#gp)"/><path d="M14 172V128q0-32 36-34h32q36 2 36 34v44z" fill="url(#gp)"/><path d="M122 104h40l-8 18h-24z" fill="#d98a0c"/><path d="M130 104c-4-12 4-18 14-10 8-8 18-2 14 10z" fill="#f0a010"/><circle cx="144" cy="150" r="42" fill="url(#gg)"/><circle cx="144" cy="150" r="42" fill="none" stroke="#ffe98a" stroke-width="2.5"/><text x="144" y="168" text-anchor="middle" font-size="52" font-weight="800" fill="#fff" stroke="#c98200" stroke-width="1.2" font-family="Arial,sans-serif">$</text></svg></span>
+          <span class="tile-body"><span class="tile-label">Salary &amp; Attendance Updates</span><i class="tile-bar"></i><span class="tile-desc">Update employee salaries and attendance records.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile" data-action="soon" data-label="Invoice &amp; Quotation">
-          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="18" y="20" width="56" height="58" rx="6"/><path d="M18 36h56M18 52h30M18 66h30M40 36v42M58 36v14"/><circle cx="68" cy="66" r="16" style="fill:var(--tile)"/><path d="M68 56v20M72 59h-6a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6h-6"/></svg></span>
-          <span class="tile-label">Invoice &amp; Quotation</span>
+        <button class="tile t-amber" data-action="soon" data-label="Invoice &amp; Quotation">
+          <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#244c96"/><stop offset="1" stop-color="#112b63"/></linearGradient><linearGradient id="gk" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffdf5a"/><stop offset="1" stop-color="#f0a010"/></linearGradient></defs><g transform="rotate(-3 70 90)"><rect x="18" y="20" width="104" height="140" rx="8" fill="#f2f6fc"/><g fill="#b4c6e6"><rect x="32" y="40" width="74" height="8" rx="4" fill="#8fb0e8"/><rect x="32" y="62" width="74" height="7" rx="3.5"/><rect x="32" y="82" width="74" height="7" rx="3.5"/><rect x="32" y="102" width="56" height="7" rx="3.5"/></g></g><rect x="110" y="84" width="76" height="92" rx="9" fill="url(#gc)"/><rect x="119" y="93" width="58" height="20" rx="3" fill="#3aa0ff"/><g fill="#3d8bff"><rect x="119" y="122" width="16" height="12" rx="2"/><rect x="141" y="122" width="16" height="12" rx="2"/><rect x="119" y="141" width="16" height="12" rx="2"/><rect x="119" y="159" width="16" height="10" rx="2"/><rect x="141" y="159" width="16" height="10" rx="2"/><rect x="163" y="141" width="14" height="28" rx="2"/></g><rect x="163" y="122" width="14" height="12" rx="2" fill="#f5b82e"/><rect x="141" y="141" width="16" height="12" rx="2" fill="#f5b82e"/><circle cx="90" cy="150" r="30" fill="url(#gk)"/><circle cx="90" cy="150" r="24" fill="none" stroke="#ffe98a" stroke-width="2"/><text x="90" y="164" text-anchor="middle" font-size="38" font-weight="800" fill="#fff" stroke="#c98200" stroke-width="1" font-family="Arial,sans-serif">$</text></svg></span>
+          <span class="tile-body"><span class="tile-label">Invoice &amp; Quotation</span><i class="tile-bar"></i><span class="tile-desc">Create invoices, manage quotations and track payments.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile" data-action="soon" data-label="Reports">
-          <span class="tile-box"><svg viewBox="0 0 100 100" aria-hidden="true"><rect x="16" y="20" width="68" height="46" rx="6"/><path d="M26 56V46M34 56V40M42 56V48M50 56V34" /><path d="M26 36l10-8 8 4 10-10"/><path d="M62 30h14M62 40h14M62 50h8"/><path d="M62 82V62a3 3 0 0 1 6 0v9l10 3v8z" class="solid"/></svg></span>
-          <span class="tile-label">Reports</span>
+        <button class="tile t-blue t-wide" data-action="soon" data-label="Reports">
+          <span class="tile-box"><svg viewBox="0 0 280 240" aria-hidden="true"><defs><linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1558c4"/><stop offset="1" stop-color="#0b3a8c"/></linearGradient></defs><rect x="62" y="176" width="46" height="30" fill="#a9c6f2"/><rect x="34" y="204" width="102" height="12" rx="6" fill="#bcd4f8"/><rect x="2" y="4" width="252" height="176" rx="14" fill="#d3e4ff"/><rect x="14" y="16" width="228" height="140" rx="6" fill="url(#gm)"/><rect x="14" y="156" width="228" height="12" fill="#d3e4ff"/><g fill="#2f8bff"><rect x="32" y="108" width="20" height="34" rx="2"/><rect x="62" y="96" width="20" height="46" rx="2"/><rect x="92" y="84" width="20" height="58" rx="2"/><rect x="122" y="70" width="20" height="72" rx="2"/></g><path d="M30 72l34-26 24 14 44-36" fill="none" stroke="#35e08a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M118 20h30v30" fill="none" stroke="#35e08a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" transform="translate(-4 4)"/><circle cx="204" cy="56" r="30" fill="#2f8bff" stroke="#fff" stroke-width="3"/><path d="M204 56V26a30 30 0 0 1 28 40z" fill="#ffa726"/><rect x="170" y="124" width="92" height="104" rx="8" fill="#eef4ff"/><g fill="#8fb0e8"><rect x="184" y="142" width="60" height="7" rx="3.5"/><rect x="184" y="162" width="60" height="7" rx="3.5"/><rect x="184" y="182" width="60" height="7" rx="3.5"/><rect x="184" y="202" width="40" height="7" rx="3.5"/></g></svg></span>
+          <span class="tile-body"><span class="tile-label">Reports</span><i class="tile-bar"></i><span class="tile-desc">View and generate reports for better insights and performance.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
       </div>
     </div>
@@ -536,7 +548,7 @@ async function flushOfflineQueue(){
 window.addEventListener('online', flushOfflineQueue);
 window.addEventListener('offline', updateOfflineBanner);
 /* ---------- Dark mode ---------- */
-const THEME_KEY = 'jobtracker-theme';
+const THEME_KEY = 'jobtracker-theme-v2';
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   const btn = document.getElementById('themeToggle');
@@ -547,7 +559,7 @@ function applyTheme(theme){
 }
 (function initTheme(){
   const saved = localStorage.getItem(THEME_KEY);
-  const theme = saved || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const theme = saved || 'dark';
   applyTheme(theme);
 })();
 function flipTheme(){
@@ -916,6 +928,7 @@ menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () =
   if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); loadTeamJobs(); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
+document.getElementById('bellBtn').addEventListener('click', () => menuView.querySelector('[data-action="jobs"]').click());
 document.getElementById('jobsBackBtn').addEventListener('click', showHome);
 document.getElementById('sectionBackBtn').addEventListener('click', showHome);
 
@@ -1149,6 +1162,7 @@ async function loadTeamJobs(silent){
     const waiting = items.filter(i => i.kind === 'invite' || i.kind === 'join_request').length;
     jobsBadge.textContent = waiting;
     jobsBadge.classList.toggle('hidden', waiting === 0);
+    document.getElementById('bellDot').classList.toggle('hidden', waiting === 0);
 
     teamItemsList.innerHTML = items.map(i => {
       const job = `<b>${esc(i.job_number)}</b> at ${esc(i.site_name)}`;
