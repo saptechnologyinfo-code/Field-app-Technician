@@ -200,6 +200,20 @@
   .action-stack{margin-top:12px;}
   .action-stack button{margin-top:8px;}
   .config-banner{background:var(--warn-bg);border:1px solid var(--border);color:var(--warn);font-size:.85rem;padding:10px 14px;border-radius:10px;margin-bottom:16px;}
+  /* ---------- Salary page ---------- */
+  .sal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .sal-stat{background:var(--grey-bg);border-radius:12px;padding:10px 12px;font-size:.78rem;color:var(--muted);}
+  .sal-stat b{display:block;font-size:1rem;color:var(--text);margin-top:2px;}
+  .sal-stat.wide{grid-column:1 / -1;}
+  .sal-stat.warn b{color:var(--danger);} .sal-stat.good b{color:var(--success);}
+  .sal-row{padding:12px 0;border-bottom:1px solid var(--border);font-size:.88rem;}
+  .sal-row:last-child{border-bottom:none;}
+  .sal-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .sal-line{display:flex;justify-content:space-between;color:var(--muted);margin:3px 0;}
+  .sal-line b{color:var(--text);font-weight:600;}
+  .sal-note{color:var(--muted);font-size:.8rem;margin-top:4px;font-style:italic;}
+  .sal-dates{display:flex;gap:10px;} .sal-dates > div{flex:1;min-width:0;}
+  .sal-actions{display:flex;gap:10px;} .sal-actions button{flex:1;width:auto;}
 </style>
 </head>
 <body>
@@ -249,7 +263,7 @@
           <span class="tile-body"><span class="tile-label">Stock Manage</span><i class="tile-bar"></i><span class="tile-desc">Check stock levels, manage parts and inventory.</span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile t-violet" data-action="soon" data-label="Salary &amp; Attendance Updates">
+        <button class="tile t-violet" data-action="salary" data-label="Salary &amp; Attendance Updates">
           <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58aaff"/><stop offset="1" stop-color="#2b6fe6"/></linearGradient><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffdf5a"/><stop offset="1" stop-color="#f0a010"/></linearGradient></defs><circle cx="66" cy="56" r="28" fill="url(#gp)"/><path d="M14 172V128q0-32 36-34h32q36 2 36 34v44z" fill="url(#gp)"/><path d="M122 104h40l-8 18h-24z" fill="#d98a0c"/><path d="M130 104c-4-12 4-18 14-10 8-8 18-2 14 10z" fill="#f0a010"/><circle cx="144" cy="150" r="42" fill="url(#gg)"/><circle cx="144" cy="150" r="42" fill="none" stroke="#ffe98a" stroke-width="2.5"/><text x="144" y="168" text-anchor="middle" font-size="52" font-weight="800" fill="#fff" stroke="#c98200" stroke-width="1.2" font-family="Arial,sans-serif">$</text></svg></span>
           <span class="tile-body"><span class="tile-label">Salary &amp; Attendance Updates</span><i class="tile-bar"></i><span class="tile-desc">Update employee salaries and attendance records.</span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
@@ -276,6 +290,38 @@
         <div class="tile-box" id="sectionIcon"></div>
         <h2 id="sectionTitle">—</h2>
         <div class="sub" style="margin:0;">This section isn't set up yet. It will appear here once it's added.</div>
+      </div>
+    </div>
+
+    <!-- ===================== SALARY & ATTENDANCE PAGE ===================== -->
+    <div id="salaryView" class="hidden">
+      <div class="detail-page-header">
+        <button class="back-btn" id="salaryBackBtn">&larr; Menu</button>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><h2>Salary &amp; transport</h2><span class="sub" style="margin:0;" id="salaryPeriodLabel"></span></div>
+        <div id="salaryChart"><div class="empty-note">Loading…</div></div>
+      </div>
+
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">Salary report</h2>
+        <div class="sal-dates">
+          <div><label>From</label><input type="date" id="salFrom" /></div>
+          <div><label>To</label><input type="date" id="salTo" /></div>
+        </div>
+        <div class="sal-actions">
+          <button class="btn-primary" id="salViewBtn">View</button>
+          <button class="btn-ghost" id="salPdfBtn" style="margin-top:16px;">Download PDF</button>
+        </div>
+        <div class="error" id="salError"></div>
+      </div>
+
+      <div id="salaryStats"></div>
+
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">Daily updates</h2>
+        <div id="salaryList"><div class="empty-note">Loading…</div></div>
       </div>
     </div>
 
@@ -664,6 +710,7 @@ const menuView = document.getElementById('menuView');
 const jobsView = document.getElementById('jobsView');
 const sectionView = document.getElementById('sectionView');
 const jobDetailView = document.getElementById('jobDetailView');
+const salaryView = document.getElementById('salaryView');
 const backBtn = document.getElementById('backBtn');
 const backBtnBottom = document.getElementById('backBtnBottom');
 
@@ -908,7 +955,7 @@ async function loadJobsList(silent){
 }
 
 /* ---------- Page navigation: home (jobs list) <-> job detail ---------- */
-const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView];
+const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView];
 function showView(view){
   ALL_VIEWS().forEach(v => v.classList.add('hidden'));
   view.classList.remove('hidden');
@@ -926,10 +973,230 @@ function showSection(label, iconHtml){
 
 menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => {
   if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); loadTeamJobs(); }
+  else if(t.dataset.action === 'salary'){ openSalary(); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
 document.getElementById('bellBtn').addEventListener('click', () => menuView.querySelector('[data-action="jobs"]').click());
 document.getElementById('jobsBackBtn').addEventListener('click', showHome);
+/* ---------- Salary helpers (shared chart + formatting) ---------- */
+const SAL_ATT = { present:'Present', half_day:'Half day', absent:'Absent', leave:'Leave' };
+function salRs(n){ return 'Rs. ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+function salYmd(d){ const p = n => String(n).padStart(2,'0'); return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()); }
+function salFmtDate(s){ return new Date(s + 'T00:00:00').toLocaleDateString([], { weekday:'short', day:'numeric', month:'short', year:'numeric' }); }
+function salCompact(v){ const a = Math.abs(v); if(a >= 1e6) return (v/1e6).toFixed(1) + 'M'; if(a >= 1000) return (v/1000).toFixed(a % 1000 ? 1 : 0) + 'k'; return String(Math.round(v)); }
+
+/* Adds a running arrears figure to each entry (ascending order in, same order out). */
+function salWithRunning(entries, opening){
+  let sRun = Number(opening && opening.salary_arrears || 0), tRun = Number(opening && opening.transport_arrears || 0);
+  return entries.map(e => {
+    sRun += Number(e.salary_due) - Number(e.salary_paid);
+    tRun += Number(e.transport_due) - Number(e.transport_paid);
+    return Object.assign({}, e, { run_salary: sRun, run_transport: tRun, run_total: sRun + tRun });
+  });
+}
+
+/* Groups entries into day / week / month buckets depending on how long the period is. */
+function salBuckets(runEntries){
+  if(!runEntries.length) return [];
+  const first = new Date(runEntries[0].entry_date + 'T00:00:00');
+  const last = new Date(runEntries[runEntries.length-1].entry_date + 'T00:00:00');
+  const span = (last - first) / 864e5;
+  const mode = span <= 31 ? 'day' : span <= 150 ? 'week' : 'month';
+  const map = new Map();
+  runEntries.forEach(e => {
+    const d = new Date(e.entry_date + 'T00:00:00');
+    let key, label;
+    if(mode === 'day'){ key = e.entry_date; label = d.toLocaleDateString([], { day:'numeric', month:'short' }); }
+    else if(mode === 'week'){ const m = new Date(d); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); key = salYmd(m); label = 'Wk ' + m.toLocaleDateString([], { day:'numeric', month:'short' }); }
+    else { key = e.entry_date.slice(0,7); label = d.toLocaleDateString([], { month:'short', year:'2-digit' }); }
+    let b = map.get(key);
+    if(!b){ b = { label, salary:0, transport:0, arrears:0 }; map.set(key, b); }
+    b.salary += Number(e.salary_paid); b.transport += Number(e.transport_paid);
+    b.arrears = e.run_total;
+  });
+  return Array.from(map.values());
+}
+
+/* Inline SVG: bars = salary paid / transport paid, line = running arrears. Theme-aware via CSS vars. */
+function salChartHtml(runEntries){
+  const b = salBuckets(runEntries);
+  if(!b.length) return '<div class="empty-note" style="text-align:center;padding:24px 0;">No salary updates in this period.</div>';
+  const W = 640, H = 250, L = 50, R = 12, T = 14, B = 34;
+  const vals = []; b.forEach(x => vals.push(x.salary, x.transport, x.arrears));
+  let max = Math.max(0, ...vals), min = Math.min(0, ...vals);
+  if(max === min) max = min + 1;
+  const ph = H - T - B, pw = W - L - R;
+  const y = v => T + ph * (1 - (v - min) / (max - min));
+  const step = pw / b.length, bw = Math.max(3, Math.min(18, step * 0.32));
+  let g = '';
+  for(let i = 0; i <= 4; i++){
+    const v = min + (max - min) * i / 4, yy = y(v);
+    g += `<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" style="stroke:var(--border)" stroke-width="1"/>` +
+         `<text x="${L-6}" y="${yy+3}" text-anchor="end" font-size="10" style="fill:var(--muted)">${salCompact(v)}</text>`;
+  }
+  const every = Math.ceil(b.length / 9);
+  let bars = '', pts = [], dots = '', labels = '';
+  b.forEach((x, i) => {
+    const cx = L + step * (i + .5), y0 = y(0);
+    const bar = (v, dx, color) => { const yy = y(v); return `<rect x="${dx}" y="${Math.min(yy,y0)}" width="${bw}" height="${Math.max(1, Math.abs(y0-yy))}" rx="2" style="fill:var(${color})"/>`; };
+    bars += bar(x.salary, cx - bw - 1, '--primary') + bar(x.transport, cx + 1, '--success');
+    pts.push(cx + ',' + y(x.arrears));
+    dots += `<circle cx="${cx}" cy="${y(x.arrears)}" r="3" style="fill:var(--warn)"><title>${x.label}: arrears ${salRs(x.arrears)}</title></circle>`;
+    if(i % every === 0) labels += `<text x="${cx}" y="${H-12}" text-anchor="middle" font-size="10" style="fill:var(--muted)">${x.label}</text>`;
+  });
+  const line = pts.length > 1 ? `<polyline points="${pts.join(' ')}" fill="none" stroke-width="2.2" stroke-linejoin="round" style="stroke:var(--warn)"/>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="Salary and transport paid with running arrears">${g}${bars}${line}${dots}${labels}</svg>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted);margin-top:8px;">
+      <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--primary);margin-right:5px;"></i>Salary paid</span>
+      <span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--success);margin-right:5px;"></i>Transport paid</span>
+      <span><i style="display:inline-block;width:14px;height:3px;border-radius:2px;background:var(--warn);margin-right:5px;vertical-align:middle;"></i>Arrears (running)</span>
+    </div>`;
+}
+
+/* ---------- Salary & attendance (technician view) ---------- */
+let salaryData = null;   // last loaded report: { technician_name, opening, totals, entries(with running), from, to }
+
+function loadScriptOnce(src){
+  return new Promise((resolve, reject) => {
+    if(document.querySelector('script[src="' + src + '"]')) return resolve();
+    const s = document.createElement('script'); s.src = src; s.onload = resolve;
+    s.onerror = () => reject(new Error('Could not load the PDF library. Check your connection.'));
+    document.head.appendChild(s);
+  });
+}
+
+function openSalary(){
+  showView(salaryView);
+  if(!document.getElementById('salFrom').value){
+    const now = new Date();
+    document.getElementById('salFrom').value = salYmd(new Date(now.getFullYear(), now.getMonth(), 1));
+    document.getElementById('salTo').value = salYmd(now);
+  }
+  loadSalary();
+}
+
+async function loadSalary(){
+  const err = document.getElementById('salError'); err.textContent = '';
+  const from = document.getElementById('salFrom').value || null;
+  const to = document.getElementById('salTo').value || null;
+  if(from && to && from > to){ err.textContent = '"From" must be before "To".'; return; }
+  document.getElementById('salaryChart').innerHTML = '<div class="empty-note">Loading…</div>';
+  document.getElementById('salaryList').innerHTML = '<div class="empty-note">Loading…</div>';
+  try{
+    const r = await gsRun('getSalaryReport', technician.id, from, to);
+    const entries = salWithRunning(r.entries, r.opening);
+    salaryData = { technician_name: r.technician_name || technician.name, opening: r.opening, totals: r.totals, entries, from, to };
+    renderSalary();
+  }catch(e){
+    salaryData = null;
+    document.getElementById('salaryChart').innerHTML = '<div class="empty-note">Could not load salary details.</div>';
+    document.getElementById('salaryList').innerHTML = '';
+    document.getElementById('salaryStats').innerHTML = '';
+    err.textContent = e.message || 'Could not load salary details.';
+  }
+}
+
+function salClosing(d){
+  const o = d.opening, t = d.totals;
+  const sal = Number(o.salary_arrears) + Number(t.salary_due) - Number(t.salary_paid);
+  const tr = Number(o.transport_arrears) + Number(t.transport_due) - Number(t.transport_paid);
+  return { sal, tr, total: sal + tr };
+}
+
+function renderSalary(){
+  const d = salaryData, t = d.totals, c = salClosing(d);
+  const nice = s => s ? new Date(s + 'T00:00:00').toLocaleDateString([], { day:'numeric', month:'short', year:'numeric' }) : '…';
+  document.getElementById('salaryPeriodLabel').textContent = nice(d.from) + ' – ' + nice(d.to);
+  document.getElementById('salaryChart').innerHTML = salChartHtml(d.entries);
+
+  const opening = Number(d.opening.salary_arrears) + Number(d.opening.transport_arrears);
+  document.getElementById('salaryStats').innerHTML = `<div class="sal-grid fade-in">
+    <div class="sal-stat">Salary paid<b>${salRs(t.salary_paid)}</b></div>
+    <div class="sal-stat">Transport paid<b>${salRs(t.transport_paid)}</b></div>
+    <div class="sal-stat">Salary earned<b>${salRs(t.salary_due)}</b></div>
+    <div class="sal-stat">Transport earned<b>${salRs(t.transport_due)}</b></div>
+    ${d.from ? `<div class="sal-stat wide">Arrears brought forward<b>${salRs(opening)}</b></div>` : ''}
+    <div class="sal-stat ${c.total > 0 ? 'warn' : 'good'}">Salary arrears<b>${salRs(c.sal)}</b></div>
+    <div class="sal-stat ${c.tr > 0 ? 'warn' : 'good'}">Transport arrears<b>${salRs(c.tr)}</b></div>
+    <div class="sal-stat wide ${c.total > 0 ? 'warn' : 'good'}">Total arrears at end of period<b>${salRs(c.total)}</b></div>
+    <div class="sal-stat wide">Attendance<b style="font-size:.9rem;">${t.present} present · ${t.half_day} half day · ${t.absent} absent · ${t.leave} leave</b></div>
+  </div>`;
+
+  const pill = { present:'pill-reached', half_day:'pill-started', absent:'pill-cancelled', leave:'pill-completed' };
+  document.getElementById('salaryList').innerHTML = d.entries.length
+    ? d.entries.slice().reverse().map(e => `<div class="sal-row fade-in">
+        <div class="sal-top"><b>${salFmtDate(e.entry_date)}</b><span class="status-pill ${pill[e.attendance] || 'pill-open'}">${SAL_ATT[e.attendance] || esc(e.attendance)}</span></div>
+        <div class="sal-line"><span>Salary paid / earned</span><b>${salRs(e.salary_paid)} / ${salRs(e.salary_due)}</b></div>
+        <div class="sal-line"><span>Transport paid / earned</span><b>${salRs(e.transport_paid)} / ${salRs(e.transport_due)}</b></div>
+        <div class="sal-line"><span>Arrears so far</span><b style="color:${e.run_total > 0 ? 'var(--danger)' : 'var(--success)'};">${salRs(e.run_total)}</b></div>
+        ${e.note ? `<div class="sal-note">${esc(e.note)}</div>` : ''}</div>`).join('')
+    : '<div class="empty-note">No salary updates in this period.</div>';
+}
+
+async function downloadSalaryPdf(){
+  const err = document.getElementById('salError'); err.textContent = '';
+  const btn = document.getElementById('salPdfBtn');
+  if(!salaryData){ await loadSalary(); if(!salaryData) return; }
+  btn.disabled = true; const label = btn.textContent; btn.textContent = 'Preparing…';
+  try{
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js');
+    const d = salaryData, t = d.totals, c = salClosing(d);
+    const doc = new window.jspdf.jsPDF({ unit:'pt', format:'a4' });
+    const nice = s => s ? new Date(s + 'T00:00:00').toLocaleDateString([], { day:'numeric', month:'short', year:'numeric' }) : 'start';
+    const toLabel = d.to ? nice(d.to) : 'today';
+    const money = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+    doc.setFontSize(18); doc.setFont('helvetica', 'bold'); doc.text('Salary & Transport Statement', 40, 50);
+    doc.setFontSize(11); doc.setFont('helvetica', 'normal');
+    doc.text('Technician: ' + d.technician_name, 40, 72);
+    doc.text('Period: ' + nice(d.from) + ' to ' + toLabel, 40, 88);
+    doc.setTextColor(120); doc.text('Generated ' + new Date().toLocaleString(), 40, 104); doc.setTextColor(0);
+
+    doc.autoTable({
+      startY: 118, theme: 'grid', styles: { fontSize: 10 }, headStyles: { fillColor: [31,111,235] },
+      head: [['Summary', 'Salary (Rs.)', 'Transport (Rs.)', 'Total (Rs.)']],
+      body: [
+        ['Arrears brought forward', money(d.opening.salary_arrears), money(d.opening.transport_arrears), money(Number(d.opening.salary_arrears) + Number(d.opening.transport_arrears))],
+        ['Earned in period', money(t.salary_due), money(t.transport_due), money(Number(t.salary_due) + Number(t.transport_due))],
+        ['Paid in period', money(t.salary_paid), money(t.transport_paid), money(Number(t.salary_paid) + Number(t.transport_paid))],
+        ['Arrears at end of period', money(c.sal), money(c.tr), money(c.total)]
+      ],
+      didParseCell: h => { if(h.row.index === 3 && h.section === 'body') h.cell.styles.fontStyle = 'bold'; },
+      columnStyles: { 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'} }
+    });
+    doc.setFontSize(10);
+    doc.text(`Attendance: ${t.present} present, ${t.half_day} half day, ${t.absent} absent, ${t.leave} leave`, 40, doc.lastAutoTable.finalY + 18);
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 30, theme: 'striped', styles: { fontSize: 8.5, cellPadding: 4 }, headStyles: { fillColor: [31,111,235] },
+      head: [['Date', 'Attendance', 'Salary earned', 'Salary paid', 'Transport earned', 'Transport paid', 'Arrears', 'Note']],
+      body: d.entries.map(e => [
+        new Date(e.entry_date + 'T00:00:00').toLocaleDateString([], { day:'2-digit', month:'short', year:'numeric' }),
+        SAL_ATT[e.attendance] || e.attendance, money(e.salary_due), money(e.salary_paid),
+        money(e.transport_due), money(e.transport_paid), money(e.run_total), e.note || ''
+      ]),
+      columnStyles: { 2:{halign:'right'}, 3:{halign:'right'}, 4:{halign:'right'}, 5:{halign:'right'}, 6:{halign:'right'}, 7:{cellWidth:90} }
+    });
+
+    const pages = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= pages; i++){
+      doc.setPage(i); doc.setFontSize(8); doc.setTextColor(140);
+      doc.text('Page ' + i + ' of ' + pages, doc.internal.pageSize.getWidth() - 40, doc.internal.pageSize.getHeight() - 20, { align:'right' });
+    }
+    const safe = d.technician_name.replace(/[^a-z0-9]+/gi, '_');
+    doc.save(`salary_${safe}_${d.from || 'start'}_to_${d.to || salYmd(new Date())}.pdf`);
+  }catch(e){
+    err.textContent = e.message || 'Could not create the PDF.';
+  }
+  btn.disabled = false; btn.textContent = label;
+}
+
+document.getElementById('salViewBtn').addEventListener('click', loadSalary);
+document.getElementById('salPdfBtn').addEventListener('click', downloadSalaryPdf);
+document.getElementById('salaryBackBtn').addEventListener('click', showHome);
+
+
 document.getElementById('sectionBackBtn').addEventListener('click', showHome);
 
 /* ---------- Side menu ---------- */
