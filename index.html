@@ -1003,8 +1003,8 @@ function salTimesText(e){
 function salWithRunning(entries, opening){
   let sRun = Number(opening && opening.salary_arrears || 0), tRun = Number(opening && opening.transport_arrears || 0);
   return entries.map(e => {
-    sRun += Number(e.salary_due) - Number(e.salary_paid);
-    tRun += Number(e.transport_due) - Number(e.transport_paid);
+    sRun += Number(e.salary_due) - Number(e.salary_paid) - Number(e.arrears_salary_paid || 0);
+    tRun += Number(e.transport_due) - Number(e.transport_paid) - Number(e.arrears_transport_paid || 0);
     return Object.assign({}, e, { run_salary: sRun, run_transport: tRun, run_total: sRun + tRun });
   });
 }
@@ -1112,8 +1112,8 @@ async function loadSalary(){
 
 function salClosing(d){
   const o = d.opening, t = d.totals;
-  const sal = Number(o.salary_arrears) + Number(t.salary_due) - Number(t.salary_paid);
-  const tr = Number(o.transport_arrears) + Number(t.transport_due) - Number(t.transport_paid);
+  const sal = Number(o.salary_arrears) + Number(t.salary_due) - Number(t.salary_paid) - Number(t.arrears_salary_paid || 0);
+  const tr = Number(o.transport_arrears) + Number(t.transport_due) - Number(t.transport_paid) - Number(t.arrears_transport_paid || 0);
   return { sal, tr, total: sal + tr };
 }
 
@@ -1134,6 +1134,8 @@ function renderSalary(){
     <div class="sal-stat ${c.total > 0 ? 'warn' : 'good'}">Salary arrears<b>${salRs(c.sal)}</b></div>
     <div class="sal-stat ${c.tr > 0 ? 'warn' : 'good'}">Transport arrears<b>${salRs(c.tr)}</b></div>
     <div class="sal-stat wide ${c.total > 0 ? 'warn' : 'good'}">Total arrears at end of period<b>${salRs(c.total)}</b></div>
+    ${Number(t.etf) ? `<div class="sal-stat wide">ETF deducted<b>${salRs(t.etf)}</b></div>` : ''}
+    ${(Number(t.arrears_salary_paid) || Number(t.arrears_transport_paid)) ? `<div class="sal-stat wide">Arrears settled<b>${salRs(Number(t.arrears_salary_paid) + Number(t.arrears_transport_paid))}</b></div>` : ''}
     <div class="sal-stat wide">Attendance<b style="font-size:.9rem;">${t.present} present · ${t.half_day} half day · ${t.absent} absent · ${t.leave} leave</b></div>
     ${hrsMin ? `<div class="sal-stat wide">Hours logged (in/out)<b>${salHoursText(hrsMin)}</b></div>` : ''}
   </div>`;
@@ -1145,6 +1147,8 @@ function renderSalary(){
         ${(e.time_in || e.time_out) ? `<div class="sal-line"><span>In / Out</span><b>${salTimesText(e).replace('In ','').replace(' · Out ',' – ')}</b></div>` : ''}
         <div class="sal-line"><span>Salary paid / earned</span><b>${salRs(e.salary_paid)} / ${salRs(e.salary_due)}</b></div>
         <div class="sal-line"><span>Transport paid / earned</span><b>${salRs(e.transport_paid)} / ${salRs(e.transport_due)}</b></div>
+        ${Number(e.etf_deduction) ? `<div class="sal-line"><span>ETF deducted</span><b>${salRs(e.etf_deduction)}</b></div>` : ''}
+        ${(Number(e.arrears_salary_paid) || Number(e.arrears_transport_paid)) ? `<div class="sal-line"><span>Arrears settled${e.arrears_day ? ' (for ' + salFmtDate(e.arrears_day) + ')' : ''}</span><b>${salRs(Number(e.arrears_salary_paid) + Number(e.arrears_transport_paid))}</b></div>` : ''}
         <div class="sal-line"><span>Arrears so far</span><b style="color:${e.run_total > 0 ? 'var(--danger)' : 'var(--success)'};">${salRs(e.run_total)}</b></div>
         ${e.note ? `<div class="sal-note">${esc(e.note)}</div>` : ''}</div>`).join('')
     : '<div class="empty-note">No salary updates in this period.</div>';
@@ -1172,36 +1176,43 @@ async function downloadSalaryPdf(){
     doc.text('Period: ' + nice(d.from) + ' to ' + toLabel, 40, 88);
     doc.setTextColor(120); doc.text('Generated ' + new Date().toLocaleString(), 40, 104); doc.setTextColor(0);
 
+    const sumBody = [
+      ['Arrears brought forward', money(d.opening.salary_arrears), money(d.opening.transport_arrears), money(Number(d.opening.salary_arrears) + Number(d.opening.transport_arrears))],
+      ['Earned in period', money(t.salary_due), money(t.transport_due), money(Number(t.salary_due) + Number(t.transport_due))]
+    ];
+    if(Number(t.etf)) sumBody.push(['ETF deducted (info only)', money(t.etf), '0.00', money(t.etf)]);
+    sumBody.push(['Paid in period', money(t.salary_paid), money(t.transport_paid), money(Number(t.salary_paid) + Number(t.transport_paid))]);
+    if(Number(t.arrears_salary_paid) || Number(t.arrears_transport_paid)) sumBody.push(['Arrears settled', money(t.arrears_salary_paid), money(t.arrears_transport_paid), money(Number(t.arrears_salary_paid) + Number(t.arrears_transport_paid))]);
+    sumBody.push(['Arrears at end of period', money(c.sal), money(c.tr), money(c.total)]);
     doc.autoTable({
       startY: 118, theme: 'grid', styles: { fontSize: 10 }, headStyles: { fillColor: [31,111,235] },
       head: [['Summary', 'Salary (Rs.)', 'Transport (Rs.)', 'Total (Rs.)']],
-      body: [
-        ['Arrears brought forward', money(d.opening.salary_arrears), money(d.opening.transport_arrears), money(Number(d.opening.salary_arrears) + Number(d.opening.transport_arrears))],
-        ['Earned in period', money(t.salary_due), money(t.transport_due), money(Number(t.salary_due) + Number(t.transport_due))],
-        ['Paid in period', money(t.salary_paid), money(t.transport_paid), money(Number(t.salary_paid) + Number(t.transport_paid))],
-        ['Arrears at end of period', money(c.sal), money(c.tr), money(c.total)]
-      ],
-      didParseCell: h => { if(h.row.index === 3 && h.section === 'body') h.cell.styles.fontStyle = 'bold'; },
+      body: sumBody,
+      didParseCell: h => { if(h.section === 'body' && h.row.index === sumBody.length - 1) h.cell.styles.fontStyle = 'bold'; },
       columnStyles: { 1:{halign:'right'}, 2:{halign:'right'}, 3:{halign:'right'} }
     });
     doc.setFontSize(10);
     doc.text(`Attendance: ${t.present} present, ${t.half_day} half day, ${t.absent} absent, ${t.leave} leave` + (hrsMin ? `   |   Hours logged: ${salHoursText(hrsMin)}` : ''), 40, doc.lastAutoTable.finalY + 18);
 
+    const hasE = d.entries.some(e => Number(e.etf_deduction));
+    const hasS = d.entries.some(e => Number(e.arrears_salary_paid) || Number(e.arrears_transport_paid));
+    const head2 = ['Date', 'Attendance'].concat(hasT ? ['In / Out'] : [], ['Salary earned'], hasE ? ['ETF'] : [], ['Salary paid', 'Transport earned', 'Transport paid'], hasS ? ['Arrears settled'] : [], ['Arrears', 'Note']);
+    const numeric = ['Salary earned', 'ETF', 'Salary paid', 'Transport earned', 'Transport paid', 'Arrears settled', 'Arrears'];
+    const colStyles = {}; head2.forEach((h, i) => { if(numeric.includes(h)) colStyles[i] = { halign:'right' }; if(h === 'Note') colStyles[i] = { cellWidth: 70 }; });
     doc.autoTable({
-      startY: doc.lastAutoTable.finalY + 30, theme: 'striped', styles: { fontSize: 8.5, cellPadding: 4 }, headStyles: { fillColor: [31,111,235] },
-      head: [hasT ? ['Date', 'Attendance', 'In / Out', 'Salary earned', 'Salary paid', 'Transport earned', 'Transport paid', 'Arrears', 'Note']
-                  : ['Date', 'Attendance', 'Salary earned', 'Salary paid', 'Transport earned', 'Transport paid', 'Arrears', 'Note']],
+      startY: doc.lastAutoTable.finalY + 30, theme: 'striped', styles: { fontSize: 8, cellPadding: 3 }, headStyles: { fillColor: [31,111,235] },
+      head: [head2],
       body: d.entries.map(e => {
-        const row = [
-          new Date(e.entry_date + 'T00:00:00').toLocaleDateString([], { day:'2-digit', month:'short', year:'numeric' }),
-          SAL_ATT[e.attendance] || e.attendance
-        ];
+        const row = [new Date(e.entry_date + 'T00:00:00').toLocaleDateString([], { day:'2-digit', month:'short', year:'numeric' }), SAL_ATT[e.attendance] || e.attendance];
         if(hasT){ const m = salHours(e.time_in, e.time_out); row.push((e.time_in || '-') + ' - ' + (e.time_out || '-') + (m != null ? ' (' + salHoursText(m) + ')' : '')); }
-        return row.concat([money(e.salary_due), money(e.salary_paid), money(e.transport_due), money(e.transport_paid), money(e.run_total), e.note || '']);
+        row.push(money(e.salary_due)); if(hasE) row.push(money(e.etf_deduction));
+        row.push(money(e.salary_paid), money(e.transport_due), money(e.transport_paid));
+        if(hasS){ const sv = Number(e.arrears_salary_paid) + Number(e.arrears_transport_paid); row.push(sv ? money(sv) + (e.arrears_day ? '\nfor ' + e.arrears_day : '') : '0.00'); }
+        row.push(money(e.run_total), e.note || '');
+        return row;
       }),
-      columnStyles: (() => { const o = hasT ? 1 : 0, c = {}; [2,3,4,5,6].forEach(i => c[i + o] = { halign:'right' }); c[7 + o] = { cellWidth: 80 }; return c; })()
+      columnStyles: colStyles
     });
-
     const pages = doc.internal.getNumberOfPages();
     for(let i = 1; i <= pages; i++){
       doc.setPage(i); doc.setFontSize(8); doc.setTextColor(140);
