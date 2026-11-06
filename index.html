@@ -4,6 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Technician — Job Tracker</title>
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#082447" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Job Tracker" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -214,6 +222,40 @@
   .sal-note{color:var(--muted);font-size:.8rem;margin-top:4px;font-style:italic;}
   .sal-dates{display:flex;gap:10px;} .sal-dates > div{flex:1;min-width:0;}
   .sal-actions{display:flex;gap:10px;} .sal-actions button{flex:1;width:auto;}
+
+  /* ---------- Install banner ---------- */
+  .install-banner{display:flex;align-items:center;gap:12px;margin:12px 2.06cqw 0;padding:10px 12px;border-radius:14px;background:linear-gradient(135deg,#0f5fdc,#0a3f9f);color:#fff;box-shadow:0 8px 18px -10px rgba(0,0,0,.7);}
+  .install-banner img{width:40px;height:40px;border-radius:10px;flex:none;}
+  .install-banner .ib-text{flex:1;min-width:0;font-size:.82rem;line-height:1.3;color:#dbe8ff;}
+  .install-banner .ib-text b{display:block;font-size:.95rem;color:#fff;}
+  .install-banner button{width:auto;margin:0;padding:9px 14px;border-radius:10px;font-size:.88rem;background:#fff;color:#0a3f9f;}
+  .install-banner .ib-x{background:none;color:#cfe0ff;padding:6px 8px;font-size:1.1rem;line-height:1;}
+  /* ---------- Salary tile balance chip ---------- */
+  .bal-chip{display:flex;flex-direction:column;gap:1px;max-width:100%;padding:.9cqw 2cqw;margin-right:5cqw;border-radius:2cqw;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;}
+  .bal-chip small{font-size:max(10px,1.8cqw);font-weight:600;letter-spacing:.02em;opacity:.9;}
+  .bal-chip b{font-size:max(12px,2.55cqw);font-weight:800;white-space:nowrap;}
+  .bal-chip.arrears{background:rgba(255,190,60,.20);border-color:rgba(255,200,90,.7);} .bal-chip.arrears b,.bal-chip.arrears small{color:#ffd780;}
+  .bal-chip.advance{background:rgba(60,220,150,.18);border-color:rgba(90,240,170,.7);} .bal-chip.advance b,.bal-chip.advance small{color:#7bf2bb;}
+  /* ---------- Leaderboard ---------- */
+  .t-rose{--bgc:linear-gradient(135deg,#c2306e 0%,#8a1f55 55%,#4f1136 100%);--edge:#d94a8a;--accent:#ffd24a;--arw:rgba(70,10,40,.7);--arwe:#e0589a;}
+  .lb-tabs{display:flex;gap:6px;background:var(--grey-bg);border-radius:12px;padding:4px;margin-bottom:14px;}
+  .lb-tabs button{flex:1;width:auto;margin:0;padding:9px 4px;font-size:.85rem;background:none;color:var(--muted);border-radius:9px;}
+  .lb-tabs button.on{background:var(--card);color:var(--primary);box-shadow:var(--shadow);}
+  .lb-me{display:flex;justify-content:space-between;align-items:center;background:var(--selected-bg);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:.9rem;color:var(--muted);}
+  .lb-me b{color:var(--primary);font-size:1.15rem;}
+  .lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:6px 0 16px;}
+  .lb-pod{flex:1;max-width:120px;text-align:center;min-width:0;}
+  .lb-pod .nm{font-size:.82rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lb-pod .hr{font-size:.75rem;color:var(--muted);margin-bottom:6px;}
+  .lb-pod .blk{border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-size:1.3rem;font-weight:800;color:#fff;}
+  .lb-pod.p1 .blk{height:84px;background:linear-gradient(180deg,#f5b82e,#d98a0c);} .lb-pod.p2 .blk{height:62px;background:linear-gradient(180deg,#b9c4d2,#8996a8);} .lb-pod.p3 .blk{height:46px;background:linear-gradient(180deg,#d99a62,#a8672f);}
+  .lb-pod.me .nm{color:var(--primary);}
+  .lb-row{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--border);font-size:.9rem;}
+  .lb-row:last-child{border-bottom:none;} .lb-row.me{background:var(--selected-bg);border-radius:10px;}
+  .lb-rank{width:28px;text-align:center;font-weight:800;color:var(--muted);flex:none;}
+  .lb-main{flex:1;min-width:0;} .lb-main b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .lb-bar{height:5px;border-radius:3px;background:var(--grey-bg);margin-top:5px;overflow:hidden;} .lb-bar i{display:block;height:100%;border-radius:3px;background:var(--primary);}
+  .lb-val{text-align:right;flex:none;} .lb-val b{display:block;font-size:.92rem;} .lb-val span{font-size:.75rem;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -252,6 +294,12 @@
 
     <!-- ===================== MAIN MENU ===================== -->
     <div id="menuView">
+      <div class="install-banner hidden" id="installBanner">
+        <img src="icons/icon-192.png" alt="" />
+        <div class="ib-text"><b>Install Job Tracker</b>Add it to your home screen for quick access.</div>
+        <button id="installBannerBtn">Install</button>
+        <button class="ib-x" id="installBannerX" aria-label="Dismiss">&times;</button>
+      </div>
       <div class="tile-grid">
         <button class="tile t-blue" data-action="jobs" data-label="My Jobs">
           <span class="tile-box"><span class="tile-badge hidden" id="jobsBadge" aria-label="Team items waiting for you">0</span><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gj" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4aa3ff"/><stop offset="1" stop-color="#1450d0"/></linearGradient></defs><g transform="rotate(-9 100 108)"><rect x="26" y="34" width="112" height="146" rx="12" fill="url(#gj)"/><rect x="37" y="48" width="90" height="122" rx="6" fill="#f4f8fe"/><rect x="52" y="22" width="60" height="28" rx="9" fill="#1b2a4d"/><rect x="64" y="14" width="36" height="16" rx="6" fill="#2d3f6c"/><text x="82" y="84" text-anchor="middle" font-size="23" font-weight="900" fill="#1a2f6b" font-family="Arial Black,Arial,sans-serif">JOBS</text><g fill="#fff" stroke="#1e66e0" stroke-width="3"><rect x="47" y="96" width="16" height="16" rx="3"/><rect x="47" y="120" width="16" height="16" rx="3"/><rect x="47" y="144" width="16" height="16" rx="3"/></g><path d="M50 104l4 4 7-8M50 128l4 4 7-8M50 152l4 4 7-8" fill="none" stroke="#1e66e0" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/><g fill="#b8c9e8"><rect x="70" y="100" width="48" height="6" rx="3"/><rect x="70" y="124" width="48" height="6" rx="3"/><rect x="70" y="148" width="48" height="6" rx="3"/></g></g><g transform="rotate(38 160 100)"><rect x="150" y="38" width="20" height="104" rx="4" fill="url(#gj)"/><rect x="150" y="38" width="20" height="10" rx="4" fill="#8fc2ff"/><polygon points="150,142 170,142 160,166" fill="#f0d7b0"/><polygon points="156,157 164,157 160,166" fill="#1b2a4d"/></g></svg></span>
@@ -265,7 +313,7 @@
         </button>
         <button class="tile t-violet" data-action="salary" data-label="Salary &amp; Attendance Updates">
           <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58aaff"/><stop offset="1" stop-color="#2b6fe6"/></linearGradient><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffdf5a"/><stop offset="1" stop-color="#f0a010"/></linearGradient></defs><circle cx="66" cy="56" r="28" fill="url(#gp)"/><path d="M14 172V128q0-32 36-34h32q36 2 36 34v44z" fill="url(#gp)"/><path d="M122 104h40l-8 18h-24z" fill="#d98a0c"/><path d="M130 104c-4-12 4-18 14-10 8-8 18-2 14 10z" fill="#f0a010"/><circle cx="144" cy="150" r="42" fill="url(#gg)"/><circle cx="144" cy="150" r="42" fill="none" stroke="#ffe98a" stroke-width="2.5"/><text x="144" y="168" text-anchor="middle" font-size="52" font-weight="800" fill="#fff" stroke="#c98200" stroke-width="1.2" font-family="Arial,sans-serif">$</text></svg></span>
-          <span class="tile-body"><span class="tile-label">Salary &amp; Attendance Updates</span><i class="tile-bar"></i><span class="tile-desc">Update employee salaries and attendance records.</span></span>
+          <span class="tile-body"><span class="tile-label">Salary &amp; Attendance Updates</span><i class="tile-bar"></i><span class="bal-chip" id="salBal"><small>Balance</small><b>Checking…</b></span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
         <button class="tile t-amber" data-action="soon" data-label="Invoice &amp; Quotation">
@@ -273,9 +321,14 @@
           <span class="tile-body"><span class="tile-label">Invoice &amp; Quotation</span><i class="tile-bar"></i><span class="tile-desc">Create invoices, manage quotations and track payments.</span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile t-blue t-wide" data-action="soon" data-label="Reports">
+        <button class="tile t-blue" data-action="soon" data-label="Reports">
           <span class="tile-box"><svg viewBox="0 0 280 240" aria-hidden="true"><defs><linearGradient id="gm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1558c4"/><stop offset="1" stop-color="#0b3a8c"/></linearGradient></defs><rect x="62" y="176" width="46" height="30" fill="#a9c6f2"/><rect x="34" y="204" width="102" height="12" rx="6" fill="#bcd4f8"/><rect x="2" y="4" width="252" height="176" rx="14" fill="#d3e4ff"/><rect x="14" y="16" width="228" height="140" rx="6" fill="url(#gm)"/><rect x="14" y="156" width="228" height="12" fill="#d3e4ff"/><g fill="#2f8bff"><rect x="32" y="108" width="20" height="34" rx="2"/><rect x="62" y="96" width="20" height="46" rx="2"/><rect x="92" y="84" width="20" height="58" rx="2"/><rect x="122" y="70" width="20" height="72" rx="2"/></g><path d="M30 72l34-26 24 14 44-36" fill="none" stroke="#35e08a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M118 20h30v30" fill="none" stroke="#35e08a" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" transform="translate(-4 4)"/><circle cx="204" cy="56" r="30" fill="#2f8bff" stroke="#fff" stroke-width="3"/><path d="M204 56V26a30 30 0 0 1 28 40z" fill="#ffa726"/><rect x="170" y="124" width="92" height="104" rx="8" fill="#eef4ff"/><g fill="#8fb0e8"><rect x="184" y="142" width="60" height="7" rx="3.5"/><rect x="184" y="162" width="60" height="7" rx="3.5"/><rect x="184" y="182" width="60" height="7" rx="3.5"/><rect x="184" y="202" width="40" height="7" rx="3.5"/></g></svg></span>
           <span class="tile-body"><span class="tile-label">Reports</span><i class="tile-bar"></i><span class="tile-desc">View and generate reports for better insights and performance.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
+        </button>
+        <button class="tile t-rose" data-action="leaderboard" data-label="Leaderboard">
+          <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#f0a010"/></linearGradient></defs><path d="M56 40h88v44a44 44 0 0 1-88 0z" fill="url(#gt)"/><path d="M56 52H30q0 38 32 46M144 52h26q0 38-32 46" fill="none" stroke="#f0a010" stroke-width="10" stroke-linecap="round"/><rect x="90" y="128" width="20" height="24" fill="#d98a0c"/><rect x="62" y="152" width="76" height="20" rx="6" fill="url(#gt)"/><path d="M100 54l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z" fill="#fff" opacity=".92"/></svg></span>
+          <span class="tile-body"><span class="tile-label">Leaderboard</span><i class="tile-bar"></i><span class="tile-desc">See who is putting in the most working hours.</span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
       </div>
@@ -322,6 +375,23 @@
       <div class="card">
         <h2 style="font-size:1rem;margin-top:0;">Daily updates</h2>
         <div id="salaryList"><div class="empty-note">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- ===================== LEADERBOARD PAGE ===================== -->
+    <div id="leaderboardView" class="hidden">
+      <div class="detail-page-header">
+        <button class="back-btn" id="lbBackBtn">&larr; Menu</button>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Leaderboard</h2><span class="sub" style="margin:0;" id="lbPeriodLabel"></span></div>
+        <div class="sub" style="margin:0 0 12px;">Ranked by total working time (attendance In / Out).</div>
+        <div class="lb-tabs" id="lbTabs">
+          <button data-p="today">Today</button><button data-p="week">This week</button><button data-p="month" class="on">This month</button>
+        </div>
+        <div id="lbMe"></div>
+        <div id="lbBody"><div class="empty-note">Loading…</div></div>
+        <div class="error" id="lbError"></div>
       </div>
     </div>
 
@@ -445,6 +515,7 @@
 <aside class="drawer" id="drawer" aria-hidden="true">
   <div class="drawer-head"><b id="drawerName">—</b><span>Technician</span></div>
   <button class="drawer-item" id="themeToggle2" role="switch" aria-checked="false"><span>Dark mode</span><span class="switch"></span></button>
+  <button class="drawer-item hidden" id="installBtn"><span>Install app</span><span aria-hidden="true">⬇️</span></button>
   <button class="drawer-item" id="settingsBtn">Change password</button>
   <button class="drawer-item danger" id="logoutBtn">Log out</button>
 </aside>
@@ -955,14 +1026,15 @@ async function loadJobsList(silent){
 }
 
 /* ---------- Page navigation: home (jobs list) <-> job detail ---------- */
-const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView];
+const leaderboardView = document.getElementById('leaderboardView');
+const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView, leaderboardView];
 function showView(view){
   ALL_VIEWS().forEach(v => v.classList.add('hidden'));
   view.classList.remove('hidden');
   view.classList.remove('page-in'); void view.offsetWidth; view.classList.add('page-in');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function showHome(){ showView(menuView); }        // main tile menu
+function showHome(){ showView(menuView); if(technician) refreshSalaryTile(); }        // main tile menu
 function showJobs(){ showView(jobsView); }        // start job + my jobs list
 function showJobDetail(){ showView(jobDetailView); }
 function showSection(label, iconHtml){
@@ -974,6 +1046,7 @@ function showSection(label, iconHtml){
 menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () => {
   if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); loadTeamJobs(); }
   else if(t.dataset.action === 'salary'){ openSalary(); }
+  else if(t.dataset.action === 'leaderboard'){ openLeaderboard(); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
 document.getElementById('bellBtn').addEventListener('click', () => menuView.querySelector('[data-action="jobs"]').click());
@@ -1232,6 +1305,99 @@ document.getElementById('salaryBackBtn').addEventListener('click', showHome);
 
 
 document.getElementById('sectionBackBtn').addEventListener('click', showHome);
+
+/* ---------- Salary tile: arrears / advance balance (all time) ---------- */
+async function refreshSalaryTile(){
+  const chip = document.getElementById('salBal'); if(!chip || !technician) return;
+  try{
+    const r = await gsRun('getSalaryReport', technician.id, null, null);
+    const v = Math.round(salClosing({ opening: r.opening, totals: r.totals }).total * 100) / 100;
+    chip.className = 'bal-chip ' + (v > 0 ? 'arrears' : v < 0 ? 'advance' : 'clear');
+    chip.querySelector('small').textContent = v > 0 ? 'Arrears due' : v < 0 ? 'Advance paid' : 'All settled';
+    chip.querySelector('b').textContent = salRs(Math.abs(v));
+  }catch(e){
+    chip.className = 'bal-chip'; chip.querySelector('small').textContent = 'Balance'; chip.querySelector('b').textContent = '—';
+  }
+}
+
+/* ---------- Leaderboard (ranked by attendance working time) ---------- */
+let lbPeriod = 'month';
+function lbRange(p){
+  const now = new Date(), today = salYmd(now);
+  if(p === 'today') return { from: today, to: today };
+  if(p === 'week'){ const d = new Date(now); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return { from: salYmd(d), to: today }; }
+  return { from: salYmd(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
+}
+function openLeaderboard(){ showView(leaderboardView); loadLeaderboard(); }
+async function loadLeaderboard(){
+  const r = lbRange(lbPeriod), err = document.getElementById('lbError'); err.textContent = '';
+  const nice = s => new Date(s + 'T00:00:00').toLocaleDateString([], { day:'numeric', month:'short' });
+  document.getElementById('lbPeriodLabel').textContent = r.from === r.to ? nice(r.from) : nice(r.from) + ' – ' + nice(r.to);
+  document.getElementById('lbBody').innerHTML = '<div class="empty-note">Loading…</div>';
+  document.getElementById('lbMe').innerHTML = '';
+  try{
+    const rows = (await gsRun('getLeaderboard', r.from, r.to) || []).map(x => ({ id: x.technician_id, name: x.name, mins: Number(x.total_minutes) || 0, days: Number(x.days_worked) || 0 }))
+      .sort((a, b) => b.mins - a.mins || a.name.localeCompare(b.name));
+    let last = null, rk = 0;                       // ties share a rank
+    rows.forEach((x, i) => { if(x.mins !== last){ rk = i + 1; last = x.mins; } x.rank = x.mins > 0 ? rk : null; });
+    renderLeaderboard(rows);
+  }catch(e){
+    document.getElementById('lbBody').innerHTML = '';
+    err.textContent = /get_leaderboard|Unknown or disallowed/i.test(e.message || '') ? 'Leaderboard is not set up on the server yet.' : (e.message || 'Could not load the leaderboard.');
+  }
+}
+function renderLeaderboard(rows){
+  const ranked = rows.filter(x => x.rank), top = ranked.length ? ranked[0].mins : 0;
+  const mine = rows.find(x => String(x.id) === String(technician.id));
+  document.getElementById('lbMe').innerHTML = mine ? `<div class="lb-me fade-in"><span>Your rank<br><b>${mine.rank ? '#' + mine.rank : '—'}</b>${mine.rank ? ' of ' + ranked.length : ''}</span><span style="text-align:right">Your time<br><b>${mine.mins ? salHoursText(mine.mins) : '0h 00m'}</b></span></div>` : '';
+  if(!ranked.length){ document.getElementById('lbBody').innerHTML = '<div class="empty-note" style="text-align:center;padding:24px 0;">No working time recorded in this period yet.</div>'; return; }
+  const medal = { 1:'🥇', 2:'🥈', 3:'🥉' };
+  const pod = [2, 1, 3].map(n => ranked.find(x => x.rank === n)).filter(Boolean);
+  const podium = ranked.length >= 3 ? `<div class="lb-podium fade-in">${pod.map(x => `<div class="lb-pod p${x.rank}${String(x.id) === String(technician.id) ? ' me' : ''}"><div class="nm">${esc(x.name)}</div><div class="hr">${salHoursText(x.mins)}</div><div class="blk">${x.rank}</div></div>`).join('')}</div>` : '';
+  const list = rows.map(x => `<div class="lb-row${String(x.id) === String(technician.id) ? ' me' : ''}">
+      <div class="lb-rank">${x.rank ? (medal[x.rank] || x.rank) : '—'}</div>
+      <div class="lb-main"><b>${esc(x.name)}${String(x.id) === String(technician.id) ? ' (you)' : ''}</b><div class="lb-bar"><i style="width:${top ? Math.round(x.mins / top * 100) : 0}%"></i></div></div>
+      <div class="lb-val"><b>${salHoursText(x.mins)}</b><span>${x.days} day${x.days === 1 ? '' : 's'}</span></div>
+    </div>`).join('');
+  document.getElementById('lbBody').innerHTML = podium + list;
+}
+document.getElementById('lbTabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if(!b) return;
+  lbPeriod = b.dataset.p;
+  document.querySelectorAll('#lbTabs button').forEach(x => x.classList.toggle('on', x === b));
+  loadLeaderboard();
+});
+document.getElementById('lbBackBtn').addEventListener('click', showHome);
+
+/* ---------- Install as app (Chrome / Android "Add to Home screen") ---------- */
+let deferredInstall = null;
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
+function updateInstallUI(){
+  const can = !isStandalone() && (deferredInstall || isIos());
+  document.getElementById('installBtn').classList.toggle('hidden', !can);
+  let dismissed = false; try{ dismissed = Date.now() - Number(localStorage.getItem('installDismissed') || 0) < 7 * 864e5; }catch(e){}
+  document.getElementById('installBanner').classList.toggle('hidden', !(can && deferredInstall && !dismissed));
+}
+async function doInstall(){
+  if(deferredInstall){
+    deferredInstall.prompt();
+    try{ await deferredInstall.userChoice; }catch(e){}
+    deferredInstall = null;
+  } else if(isIos()){
+    alert('To install: tap the Share button, then "Add to Home Screen".');
+  }
+  updateInstallUI(); closeDrawer();
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; updateInstallUI(); });
+window.addEventListener('appinstalled', () => { deferredInstall = null; updateInstallUI(); });
+document.getElementById('installBtn').addEventListener('click', doInstall);
+document.getElementById('installBannerBtn').addEventListener('click', doInstall);
+document.getElementById('installBannerX').addEventListener('click', () => { try{ localStorage.setItem('installDismissed', String(Date.now())); }catch(e){} updateInstallUI(); });
+updateInstallUI();
+if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 
 /* ---------- Side menu ---------- */
 const drawer = document.getElementById('drawer');
