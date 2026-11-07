@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Job Tracker" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
-<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -298,7 +298,7 @@
     <!-- ===================== MAIN MENU ===================== -->
     <div id="menuView">
       <div class="install-banner hidden" id="installBanner">
-        <img src="icons/icon-192.png" alt="" />
+        <img src="icon-192.png" alt="" />
         <div class="ib-text"><b>Install Job Tracker</b>Add it to your home screen for quick access.</div>
         <button id="installBannerBtn">Install</button>
         <button class="ib-x" id="installBannerX" aria-label="Dismiss">&times;</button>
@@ -1391,7 +1391,7 @@ const isStandalone = () => window.matchMedia('(display-mode: standalone)').match
 const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 function updateInstallUI(){
   const can = !isStandalone() && (deferredInstall || isIos());
-  document.getElementById('installBtn').classList.toggle('hidden', !can);
+  document.getElementById('installBtn').classList.toggle('hidden', isStandalone());
   let dismissed = false; try{ dismissed = Date.now() - Number(localStorage.getItem('installDismissed') || 0) < 7 * 864e5; }catch(e){}
   document.getElementById('installBanner').classList.toggle('hidden', !(can && deferredInstall && !dismissed));
 }
@@ -1402,6 +1402,10 @@ async function doInstall(){
     deferredInstall = null;
   } else if(isIos()){
     alert('To install: tap the Share button, then "Add to Home Screen".');
+  } else if(!/^https:$/.test(location.protocol) && location.hostname !== 'localhost'){
+    alert('Chrome only allows installing over HTTPS. This page is opened as "' + location.protocol + '//". Host it on an https:// address, then try again.');
+  } else {
+    alert('Chrome has not offered the install prompt yet.\n\nTry: Chrome menu (⋮) → "Install app" or "Add to Home screen".\n\nIf that option is missing, make sure manifest.webmanifest, sw.js and the icons folder are uploaded next to this page.');
   }
   updateInstallUI(); closeDrawer();
 }
