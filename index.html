@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Job Tracker" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -231,10 +231,13 @@
   .install-banner button{width:auto;margin:0;padding:9px 14px;border-radius:10px;font-size:.88rem;background:#fff;color:#0a3f9f;}
   .install-banner .ib-x{background:none;color:#cfe0ff;padding:6px 8px;font-size:1.1rem;line-height:1;}
   /* ---------- Salary tile balance chip ---------- */
-  .bal-chip{display:flex;flex-direction:column;gap:1px;max-width:100%;padding:.9cqw 2cqw;margin-right:5cqw;border-radius:2cqw;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;}
+  .tile-body:has(.bal-chip) .tile-bar{display:none;}
+  .tile-body:has(.bal-chip) .tile-label{margin-bottom:max(6px,1.5cqw);}
+  .bal-chip{display:flex;flex-direction:column;gap:1px;max-width:calc(100% - 7cqw);padding:.8cqw 1.6cqw;border-radius:2cqw;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;}
   .bal-chip small{font-size:max(10px,1.8cqw);font-weight:600;letter-spacing:.02em;opacity:.9;}
-  .bal-chip b{font-size:max(12px,2.55cqw);font-weight:800;white-space:nowrap;}
+  .bal-chip b{font-size:max(11px,2.2cqw);font-weight:800;white-space:nowrap;}
   .bal-chip.arrears{background:rgba(255,190,60,.20);border-color:rgba(255,200,90,.7);} .bal-chip.arrears b,.bal-chip.arrears small{color:#ffd780;}
+  .bal-chip.rank{background:rgba(255,210,74,.18);border-color:rgba(255,215,100,.75);} .bal-chip.rank b,.bal-chip.rank small{color:#ffe08a;}
   .bal-chip.advance{background:rgba(60,220,150,.18);border-color:rgba(90,240,170,.7);} .bal-chip.advance b,.bal-chip.advance small{color:#7bf2bb;}
   /* ---------- Leaderboard ---------- */
   .t-rose{--bgc:linear-gradient(135deg,#c2306e 0%,#8a1f55 55%,#4f1136 100%);--edge:#d94a8a;--accent:#ffd24a;--arw:rgba(70,10,40,.7);--arwe:#e0589a;}
@@ -328,7 +331,7 @@
         </button>
         <button class="tile t-rose" data-action="leaderboard" data-label="Leaderboard">
           <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="gt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe27a"/><stop offset="1" stop-color="#f0a010"/></linearGradient></defs><path d="M56 40h88v44a44 44 0 0 1-88 0z" fill="url(#gt)"/><path d="M56 52H30q0 38 32 46M144 52h26q0 38-32 46" fill="none" stroke="#f0a010" stroke-width="10" stroke-linecap="round"/><rect x="90" y="128" width="20" height="24" fill="#d98a0c"/><rect x="62" y="152" width="76" height="20" rx="6" fill="url(#gt)"/><path d="M100 54l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z" fill="#fff" opacity=".92"/></svg></span>
-          <span class="tile-body"><span class="tile-label">Leaderboard</span><i class="tile-bar"></i><span class="tile-desc">See who is putting in the most working hours.</span></span>
+          <span class="tile-body"><span class="tile-label">Leaderboard</span><i class="tile-bar"></i><span class="bal-chip rank" id="lbBal"><small>Your rank · this month</small><b>Checking…</b></span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
       </div>
@@ -1034,7 +1037,7 @@ function showView(view){
   view.classList.remove('page-in'); void view.offsetWidth; view.classList.add('page-in');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-function showHome(){ showView(menuView); if(technician) refreshSalaryTile(); }        // main tile menu
+function showHome(){ showView(menuView); if(technician){ refreshSalaryTile(); refreshLeaderboardTile(); } }        // main tile menu
 function showJobs(){ showView(jobsView); }        // start job + my jobs list
 function showJobDetail(){ showView(jobDetailView); }
 function showSection(label, iconHtml){
@@ -1328,6 +1331,23 @@ function lbRange(p){
   if(p === 'week'){ const d = new Date(now); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return { from: salYmd(d), to: today }; }
   return { from: salYmd(new Date(now.getFullYear(), now.getMonth(), 1)), to: today };
 }
+function lbRank(data){
+  const rows = (data || []).map(x => ({ id: x.technician_id, name: x.name, mins: Number(x.total_minutes) || 0, days: Number(x.days_worked) || 0 }))
+    .sort((a, b) => b.mins - a.mins || a.name.localeCompare(b.name));
+  let last = null, rk = 0;                       // ties share a rank
+  rows.forEach((x, i) => { if(x.mins !== last){ rk = i + 1; last = x.mins; } x.rank = x.mins > 0 ? rk : null; });
+  return rows;
+}
+async function refreshLeaderboardTile(){
+  const chip = document.getElementById('lbBal'); if(!chip || !technician) return;
+  const r = lbRange('month'), small = chip.querySelector('small'), b = chip.querySelector('b');
+  try{
+    const rows = lbRank(await gsRun('getLeaderboard', r.from, r.to));
+    const ranked = rows.filter(x => x.rank), mine = rows.find(x => String(x.id) === String(technician.id));
+    small.textContent = 'Your rank · this month';
+    b.textContent = mine && mine.rank ? '#' + mine.rank + ' of ' + ranked.length : 'No hours yet';
+  }catch(e){ small.textContent = 'Working hours'; b.textContent = 'View ranking'; }
+}
 function openLeaderboard(){ showView(leaderboardView); loadLeaderboard(); }
 async function loadLeaderboard(){
   const r = lbRange(lbPeriod), err = document.getElementById('lbError'); err.textContent = '';
@@ -1336,11 +1356,7 @@ async function loadLeaderboard(){
   document.getElementById('lbBody').innerHTML = '<div class="empty-note">Loading…</div>';
   document.getElementById('lbMe').innerHTML = '';
   try{
-    const rows = (await gsRun('getLeaderboard', r.from, r.to) || []).map(x => ({ id: x.technician_id, name: x.name, mins: Number(x.total_minutes) || 0, days: Number(x.days_worked) || 0 }))
-      .sort((a, b) => b.mins - a.mins || a.name.localeCompare(b.name));
-    let last = null, rk = 0;                       // ties share a rank
-    rows.forEach((x, i) => { if(x.mins !== last){ rk = i + 1; last = x.mins; } x.rank = x.mins > 0 ? rk : null; });
-    renderLeaderboard(rows);
+    renderLeaderboard(lbRank(await gsRun('getLeaderboard', r.from, r.to)));
   }catch(e){
     document.getElementById('lbBody').innerHTML = '';
     err.textContent = /get_leaderboard|Unknown or disallowed/i.test(e.message || '') ? 'Leaderboard is not set up on the server yet.' : (e.message || 'Could not load the leaderboard.');
