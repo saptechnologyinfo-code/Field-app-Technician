@@ -114,6 +114,17 @@
   .status-row button{width:auto;margin:0;padding:12px 16px;}
   /* ---------- App bar + dashboard ---------- */
   .app-bar{display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#0b2d58 0%,#082447 100%);color:#fff;margin:-20px -16px 0;padding:0 10px 0 14px;height:66px;position:sticky;top:0;z-index:200;box-shadow:0 8px 20px -6px rgba(0,0,0,.6);border-bottom:1px solid rgba(80,140,255,.12);}
+
+  /* Technician avatar with shine animation */
+  .tech-avatar{position:relative;width:46px;height:46px;flex:none;border-radius:50%;padding:2px;background:conic-gradient(from 0deg,#2f8cff,#8fd0ff,#ffffff,#8fd0ff,#2f8cff);box-shadow:0 0 0 1px rgba(255,255,255,.25),0 0 12px rgba(47,140,255,.55);animation:avatarGlow 2.6s ease-in-out infinite;}
+  .tech-avatar .av-inner{position:relative;width:100%;height:100%;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,#1d6fe0,#0b2d58);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;letter-spacing:.5px;}
+  .tech-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;}
+  .tech-avatar.has-photo img{display:block;}
+  .tech-avatar.has-photo .av-initials{display:none;}
+  .tech-avatar .av-inner::after{content:"";position:absolute;top:-20%;left:-80%;width:45%;height:140%;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.75) 50%,transparent 100%);transform:skewX(-18deg);animation:avatarShine 3s ease-in-out infinite;pointer-events:none;}
+  @keyframes avatarShine{0%{left:-80%;}55%,100%{left:140%;}}
+  @keyframes avatarGlow{0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.25),0 0 8px rgba(47,140,255,.45);}50%{box-shadow:0 0 0 1px rgba(255,255,255,.5),0 0 18px rgba(143,208,255,.9);}}
+  @media (prefers-reduced-motion:reduce){.tech-avatar,.tech-avatar .av-inner::after{animation:none;}}
   .brand{width:46px;height:46px;flex:none;}
   .app-title{flex:1;min-width:0;line-height:1.2;}
   .app-bar h1{margin:0;font-size:1.2rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -285,6 +296,7 @@
 
   <div id="appView" class="hidden">
     <header class="app-bar">
+      <div class="tech-avatar" id="techAvatar" aria-label="Technician photo"><div class="av-inner"><span class="av-initials" id="techInitials"></span><img id="techPhoto" alt="Technician photo" /></div></div>
       <svg class="brand" viewBox="0 0 64 64" aria-hidden="true"><defs><mask id="wm"><rect width="64" height="64" fill="#fff"/><polygon points="45.2,25.2 38.8,18.8 52.9,4.7 59.3,11.1" fill="#000"/></mask></defs><path d="M12 52L35 29" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="42" cy="22" r="12" fill="#fff" mask="url(#wm)"/><circle cx="46" cy="46" r="7" fill="none" stroke="#2f8cff" stroke-width="6"/><circle cx="46" cy="46" r="11.5" fill="none" stroke="#2f8cff" stroke-width="5" stroke-dasharray="5 4.03"/></svg>
       <div class="app-title"><h1>Hi <span id="techName">—</span></h1><span class="app-sub">Technician Dashboard</span></div>
       <button class="icon-btn" id="bellBtn" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M5.5 17h13l-1.7-2.2V10a4.8 4.8 0 0 0-9.6 0v4.8z"/><path d="M10 20.2a2 2 0 0 0 4 0"/></svg><span class="bell-dot" id="bellDot"></span></button>
@@ -2024,6 +2036,41 @@ async function enterApp(){
   appView.classList.remove('hidden');
   techNameEl.textContent = technician.name;
   document.getElementById('drawerName').textContent = technician.name;
+
+  // Technician avatar: loads technicians.photo_path from Storage (via getFileDataUrl), else initials
+  (function(){
+    const av = document.getElementById('techAvatar');
+    const img = document.getElementById('techPhoto');
+    const ini = document.getElementById('techInitials');
+    const parts = (technician.name || '').trim().split(/\s+/).filter(Boolean);
+    ini.textContent = ((parts[0]||'')[0] || '') + ((parts.length>1 ? parts[parts.length-1][0] : '') || '');
+    const cacheKey = 'techPhoto:' + technician.id;
+    const show = (src) => {
+      img.onload = () => av.classList.add('has-photo');
+      img.onerror = () => av.classList.remove('has-photo');
+      img.src = src;
+    };
+    // 1) instant: last cached photo
+    try { const c = sessionStorage.getItem(cacheKey); if(c) show(c); } catch(e){}
+    // 2) fresh: find photo_path (from login result, else from listTechnicians) and download it
+    (async () => {
+      try {
+        let path = technician.photo_path;
+        if(path === undefined){
+          const list = await gsRun('listTechnicians');
+          const me = (list || []).find(t => String(t.id) === String(technician.id));
+          path = me ? me.photo_path : null;
+          technician.photo_path = path || null;
+        }
+        if(!path){ av.classList.remove('has-photo'); try{ sessionStorage.removeItem(cacheKey); }catch(e){} return; }
+        const dataUrl = await gsRun('getFileDataUrl', path);
+        if(dataUrl){
+          show(dataUrl);
+          try { sessionStorage.setItem(cacheKey, dataUrl); } catch(e){}
+        }
+      } catch(e){ /* keep initials */ }
+    })();
+  })();
   showHome(); // always land on the main menu after login
   requestDevicePermissions(); // fire-and-forget — shows browser prompts, doesn't block the UI
   updateOfflineBanner();
