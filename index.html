@@ -270,6 +270,27 @@
   .lb-main{flex:1;min-width:0;} .lb-main b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .lb-bar{height:5px;border-radius:3px;background:var(--grey-bg);margin-top:5px;overflow:hidden;} .lb-bar i{display:block;height:100%;border-radius:3px;background:var(--primary);}
   .lb-val{text-align:right;flex:none;} .lb-val b{display:block;font-size:.92rem;} .lb-val span{font-size:.75rem;color:var(--muted);}
+
+  /* ---- CCTV Plan Maker ---- */
+  .t-cyan{--bgc:linear-gradient(135deg,#0e86c0 0%,#0a5483 55%,#06304f 100%);--edge:#1aa0d8;--accent:#5fd4ff;--arw:rgba(4,40,70,.7);--arwe:#1a90c8;}
+  #planView .pb{width:auto;margin:0;padding:8px 11px;font-size:.8rem;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:9px;flex:none;white-space:nowrap;}
+  #planView .pb.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .pl-tabs,.pl-tools,.pl-acts{display:flex;gap:6px;overflow-x:auto;padding:4px 0;margin-top:6px;align-items:center;}
+  .pl-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .pl-cv{position:relative;height:58vh;min-height:300px;border:1px solid var(--border);border-radius:10px;overflow:hidden;touch-action:none;background:#fff;}
+  #plSvg{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;}
+  .pl-fin{position:absolute;right:10px;bottom:10px;background:var(--success)!important;color:#fff!important;border-color:var(--success)!important;}
+  .pl-hint{font-size:.78rem;color:var(--muted);margin:6px 0;}
+  .pl-prop{border-top:1px solid var(--border);margin-top:8px;padding-top:8px;}
+  .pl-prop select{width:auto;padding:8px;font-size:.85rem;}
+  .pl-dirs{display:grid;grid-template-columns:repeat(3,44px);gap:4px;margin:8px 0;justify-content:start;}
+  .pl-dirs .pb{padding:8px 0!important;text-align:center;}
+  .pl-prop input[type=range]{padding:0;}
+  .pl-row{display:flex;gap:8px;align-items:center;margin:6px 0;}
+  .pl-row input{flex:1;margin:0;padding:9px;}
+  .pl-n{flex:none;width:26px;height:26px;border-radius:50%;background:#d62828;color:#fff;font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .pl-ed.full{position:fixed;inset:0;z-index:450;margin:0;border-radius:0;overflow:auto;display:flex;flex-direction:column;}
+  .pl-ed.full .pl-cv{flex:1;height:auto;}
 </style>
 </head>
 <body>
@@ -346,7 +367,13 @@
           <span class="tile-body"><span class="tile-label">Leaderboard</span><i class="tile-bar"></i><span class="bal-chip rank" id="lbBal"><small>Your rank · this month</small><b>Checking…</b></span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-      </div>
+      
+        <button class="tile t-cyan" data-action="plans" data-label="CCTV Plan Maker">
+          <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><rect x="30" y="40" width="140" height="110" rx="6" fill="#f2f6fc"/><path d="M30 95h60v55M90 40v30" stroke="#164b9e" stroke-width="8" fill="none"/><path d="M118 60l40 24-40 24z" fill="#ff5a5a" opacity=".6"/><circle cx="118" cy="84" r="14" fill="#d62828" stroke="#fff" stroke-width="4"/><rect x="132" y="128" width="38" height="22" rx="4" fill="#1f2a44"/></svg></span>
+          <span class="tile-body"><span class="tile-label">CCTV Plan Maker</span><i class="tile-bar"></i><span class="tile-desc">Draw CCTV layout plans on your phone and export a PDF.</span></span>
+          <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
+        </button>
+</div>
     </div>
 
     <!-- ===================== COMING-SOON SECTION ===================== -->
@@ -390,6 +417,33 @@
       <div class="card">
         <h2 style="font-size:1rem;margin-top:0;">Daily updates</h2>
         <div id="salaryList"><div class="empty-note">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- ===================== CCTV PLAN MAKER PAGE ===================== -->
+    <div id="planView" class="hidden">
+      <div class="detail-page-header"><button class="back-btn" id="planBackBtn">&larr; Menu</button></div>
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">CCTV Plan Maker</h2>
+        <label>Project / location</label><input id="plProj" placeholder="e.g. Division Secretariat, Katana" />
+        <div class="pl-tabs" id="plTabs"></div>
+        <div class="pl-two"><div><label>Sheet title</label><input id="plTitle" placeholder="GROUND FLOOR" /></div><div><label>Drawing no.</label><input id="plNo" /></div></div>
+        <button class="btn-ghost hidden" id="plDelSheet" style="margin-top:10px;">Delete this sheet</button>
+      </div>
+      <div class="card pl-ed" id="plEd">
+        <div class="pl-tools" id="plTools"></div>
+        <div class="pl-hint" id="plHint"></div>
+        <div class="pl-cv"><svg id="plSvg" xmlns="http://www.w3.org/2000/svg"></svg><button class="pb pl-fin hidden" id="plFin">✓ Finish line</button></div>
+        <div class="pl-acts"><button class="pb" id="plUndo">↶ Undo</button><button class="pb" id="plZi">＋</button><button class="pb" id="plZo">－</button><button class="pb" id="plFit">Fit</button><button class="pb" id="plPhoto">📷 Trace photo</button><button class="pb" id="plFull">⛶ Full screen</button></div>
+        <input type="file" id="plFile" accept="image/*" class="hidden" />
+        <div id="plProp"></div>
+      </div>
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">Camera schedule</h2>
+        <div id="plSched"></div>
+        <button class="btn-primary" id="plPdf">Download PDF (A3)</button>
+        <button class="btn-ghost" id="plNew">New plan</button>
+        <div class="error" id="plErr"></div>
       </div>
     </div>
 
@@ -1042,7 +1096,7 @@ async function loadJobsList(silent){
 
 /* ---------- Page navigation: home (jobs list) <-> job detail ---------- */
 const leaderboardView = document.getElementById('leaderboardView');
-const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView, leaderboardView];
+const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView, leaderboardView, document.getElementById('planView')];
 function showView(view){
   ALL_VIEWS().forEach(v => v.classList.add('hidden'));
   view.classList.remove('hidden');
@@ -1062,6 +1116,7 @@ menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () =
   if(t.dataset.action === 'jobs'){ showJobs(); loadJobsList(); loadOpenJobs(); loadPermissions(true); loadTeamJobs(); }
   else if(t.dataset.action === 'salary'){ openSalary(); }
   else if(t.dataset.action === 'leaderboard'){ openLeaderboard(); }
+  else if(t.dataset.action === 'plans'){ openPlans(); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
 document.getElementById('bellBtn').addEventListener('click', () => menuView.querySelector('[data-action="jobs"]').click());
@@ -2084,6 +2139,290 @@ async function enterApp(){
 (function init(){
   const existing = getSession();
   if(existing){ technician = existing; enterApp(); }
+})();
+</script>
+<script>
+/* ===== CCTV Plan Maker ===== */
+(function(){
+const $=id=>document.getElementById(id), W=1200, G=10, KEY='plan_draft_v1';
+const mk=i=>({title:['GROUND FLOOR','FIRST FLOOR','SECOND FLOOR','THIRD FLOOR'][i]||'FLOOR '+(i+1),no:'CCTV-0'+(i+1),it:[]});
+let P; try{P=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+if(!P||!P.sh||!P.sh.length) P={proj:'',cur:0,sh:[mk(0)]};
+if(!P.sh[P.cur]) P.cur=0;
+let tool='sel', sel=null, chain=null, corner=null, bg=null, hist=[], vb={x:0,y:0,w:W,h:800};
+const svg=$('plSvg'), cur=()=>P.sh[P.cur], sn=v=>Math.round(v/G)*G;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){}};
+const TOOLS=[['sel','☝️','Select'],['w','▬','Wall'],['g','═','Glass'],['d','┅','Boundary'],['b','▭','Building'],['o','⬚','Open area'],['p','◻','Pillar'],['c','📷','Camera'],['v','🖥','DVR'],['t','T','Text'],['x','🗑','Erase']];
+const HINT={sel:'Tap an item to select it. Drag a selected item to move it. Drag empty space to pan, pinch to zoom.',w:'Tap points to draw a wall. Lines snap perfectly straight. Press Finish when done.',g:'Tap points to draw glass / window / shopfront.',d:'Tap points to draw a porch or boundary line.',b:'Tap two opposite corners of a building / room.',o:'Tap two opposite corners of an open area (parking, ground).',p:'Tap to place a pillar.',c:'Tap to place a camera, then set its direction below.',v:'Tap to place the DVR / NVR.',t:'Tap to add a text label.',x:'Tap an item to delete it.'};
+
+/* ---------- geometry ---------- */
+function fitVB(){const r=svg.getBoundingClientRect(); if(!r.width) return false; vb.h=vb.w*r.height/r.width; return true;}
+function world(e){const r=svg.getBoundingClientRect(); return {x:vb.x+(e.clientX-r.left)/r.width*vb.w, y:vb.y+(e.clientY-r.top)/r.height*vb.h};}
+const dS=(p,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p.x-a[0])*dx+(p.y-a[1])*dy)/l)):0;return Math.hypot(p.x-a[0]-t*dx,p.y-a[1]-t*dy);};
+function hit(p){
+  const tol=16*vb.w/(svg.clientWidth||400), it=cur().it;
+  for(let k=it.length-1;k>=0;k--){
+    const i=it[k]; let d=1e9;
+    if(i.pts){for(let j=1;j<i.pts.length;j++) d=Math.min(d,dS(p,i.pts[j-1],i.pts[j]));}
+    else if(i.x1!=null){const a=[i.x1,i.y1],b=[i.x2,i.y1],c=[i.x2,i.y2],e=[i.x1,i.y2]; d=Math.min(dS(p,a,b),dS(p,b,c),dS(p,c,e),dS(p,e,a));}
+    else d=Math.hypot(p.x-i.x,p.y-i.y)-(i.t=='v'?14:0);
+    if(d<tol) return i;
+  }
+  return null;
+}
+function shifted(o,dx,dy){
+  if(o.pts) o.pts=o.pts.map(p=>[p[0]+dx,p[1]+dy]);
+  else if(o.x1!=null){o.x1+=dx;o.x2+=dx;o.y1+=dy;o.y2+=dy;}
+  else {o.x+=dx;o.y+=dy;}
+  return o;
+}
+const wedge=(x,y,a,R,sp)=>{const r=d=>d*Math.PI/180,p=d=>[x+R*Math.cos(r(d)),y+R*Math.sin(r(d))],A=p(a-sp),B=p(a+sp);return 'M'+x+' '+y+'L'+A[0]+' '+A[1]+'A'+R+' '+R+' 0 0 1 '+B[0]+' '+B[1]+'Z';};
+
+/* ---------- render ---------- */
+function render(){
+  if(!fitVB()) return;
+  const it=cur().it; let n=0, s='';
+  s+='<defs><pattern id="plg" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#9aa3b2" stroke-opacity=".35" stroke-width=".7"/></pattern></defs>';
+  s+='<rect x="-6000" y="-6000" width="14000" height="14000" fill="#fff"/><rect x="-6000" y="-6000" width="14000" height="14000" fill="url(#plg)"/>';
+  if(bg) s+='<image href="'+bg+'" x="0" y="0" width="'+W+'" height="800" opacity=".4" preserveAspectRatio="xMidYMid meet"/>';
+  it.forEach(i=>{
+    const h=i===sel;
+    if(i.pts){
+      const pp=i.pts.map(p=>p.join(',')).join(' ');
+      if(h) s+='<polyline points="'+pp+'" fill="none" stroke="#f5b82e" stroke-width="14" stroke-opacity=".6" stroke-linecap="round"/>';
+      s+='<polyline points="'+pp+'" fill="none" '+(i.t=='w'?'stroke="#000" stroke-width="5"':i.t=='g'?'stroke="#2a6fdb" stroke-width="5"':'stroke="#6b7280" stroke-width="2.5" stroke-dasharray="12 8"')+'/>';
+      if(i.t=='g') s+='<polyline points="'+pp+'" fill="none" stroke="#fff" stroke-width="1.6"/>';
+    } else if(i.x1!=null){
+      const x=Math.min(i.x1,i.x2),y=Math.min(i.y1,i.y2),w=Math.abs(i.x2-i.x1),hh=Math.abs(i.y2-i.y1);
+      if(h) s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" fill="none" stroke="#f5b82e" stroke-width="12" stroke-opacity=".6"/>';
+      s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" '+(i.t=='b'?'fill="#eef0f4" stroke="#000" stroke-width="4"':'fill="none" stroke="#6b7280" stroke-width="2.5" stroke-dasharray="12 8"')+'/>';
+      if(i.l) s+='<text x="'+(x+w/2)+'" y="'+(y+hh/2+5)+'" text-anchor="middle" font-size="16" font-weight="700" fill="#1f2a44" font-family="Arial">'+esc(i.l)+'</text>';
+    } else if(i.t=='p'){
+      s+='<rect x="'+(i.x-6)+'" y="'+(i.y-6)+'" width="12" height="12" fill="#fff" stroke="#000" stroke-width="2"/>';
+    } else if(i.t=='v'){
+      s+='<rect x="'+(i.x-20)+'" y="'+(i.y-10)+'" width="40" height="20" fill="#1f2a44" stroke="#000"/><text x="'+i.x+'" y="'+(i.y+4)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" font-family="Arial">DVR/NVR</text>';
+    } else if(i.t=='tx'){
+      s+='<text x="'+i.x+'" y="'+i.y+'" font-size="18" font-weight="700" fill="#6b7280" font-family="Arial">'+esc(i.s)+'</text>';
+    } else if(i.t=='c'){
+      n++;
+      const m=i.m||'s', R=62;
+      s+='<g fill="#d62828" fill-opacity=".22" stroke="#d62828" stroke-opacity=".6" stroke-width="1">';
+      if(m=='d') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="'+(R*.7)+'"/>';
+      else {s+='<path d="'+wedge(i.x,i.y,i.a,R,30)+'"/>'; if(m=='2') s+='<path d="'+wedge(i.x,i.y,i.a+180,R,30)+'"/>';}
+      s+='</g><circle cx="'+i.x+'" cy="'+i.y+'" r="11" fill="#d62828" stroke="#fff" stroke-width="2"/><text x="'+i.x+'" y="'+(i.y+4.5)+'" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Arial">'+n+'</text>';
+    }
+    if(h && i.x!=null && i.t!='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="26" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
+    if(h && i.t=='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="17" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
+  });
+  if(corner) s+='<circle cx="'+corner[0]+'" cy="'+corner[1]+'" r="7" fill="#1f6feb"/>';
+  svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
+  svg.innerHTML=s;
+  $('plFin').classList.toggle('hidden',!chain);
+}
+function fit(){
+  const pts=[]; cur().it.forEach(i=>{(i.pts||[]).forEach(p=>pts.push(p)); if(i.x1!=null) pts.push([i.x1,i.y1],[i.x2,i.y2]); if(i.x!=null) pts.push([i.x,i.y]);});
+  const r=svg.getBoundingClientRect(), asp=(r.height/(r.width||1))||.66;
+  if(!pts.length) vb={x:0,y:0,w:W,h:W*asp};
+  else{const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs)-70,x1=Math.max(...xs)+70,y0=Math.min(...ys)-70,y1=Math.max(...ys)+70,w=Math.max(x1-x0,(y1-y0)/asp,300);
+    vb={x:(x0+x1)/2-w/2,y:(y0+y1)/2-w*asp/2,w,h:w*asp};}
+  render();
+}
+function zoom(f){vb.x+=vb.w*(1-f)/2; vb.y+=vb.h*(1-f)/2; vb.w*=f; render();}
+
+/* ---------- panels ---------- */
+const cams=()=>cur().it.filter(i=>i.t=='c');
+function tabs(){
+  $('plTabs').innerHTML=P.sh.map((s,i)=>'<button class="pb'+(i==P.cur?' on':'')+'" data-s="'+i+'">'+esc(s.title||'Sheet '+(i+1))+'</button>').join('')+'<button class="pb" data-s="new">+ Sheet</button>';
+  $('plTitle').value=cur().title; $('plNo').value=cur().no; $('plProj').value=P.proj;
+  $('plDelSheet').classList.toggle('hidden',P.sh.length<2);
+}
+function props(){
+  const el=$('plProp'); if(!sel){el.innerHTML='';return;}
+  if(sel.t=='c'){
+    const n=cams().indexOf(sel)+1, dirs=[['↖',225],['↑',270],['↗',315],['←',180],['•',-1],['→',0],['↙',135],['↓',90],['↘',45]];
+    el.innerHTML='<div class="pl-prop"><b>Camera '+n+'</b><div class="pl-acts"><select id="plM"><option value="s">Single direction</option><option value="2">Two-way</option><option value="d">Dome 360°</option></select><button class="pb" data-del="1">Delete</button></div>'
+      +'<div class="pl-dirs">'+dirs.map(d=>d[1]<0?'<span></span>':'<button class="pb" data-a="'+d[1]+'">'+d[0]+'</button>').join('')+'</div>'
+      +'<input type="range" id="plA" min="0" max="359" value="'+Math.round(((sel.a%360)+360)%360)+'"></div>';
+    $('plM').value=sel.m||'s';
+  } else {
+    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+'<button class="pb" data-del="1">Delete</button></div></div>';
+  }
+}
+function sched(){
+  const c=cams();
+  $('plSched').innerHTML=c.length?c.map((x,i)=>'<div class="pl-row"><span class="pl-n" data-pick="'+i+'">'+(i+1)+'</span><input data-d="'+i+'" value="'+esc(x.d||'')+'" placeholder="Location / coverage"></div>').join(''):'<div class="empty-note">No cameras yet. Use the Camera tool on the plan.</div>';
+}
+function ui(){render(); props(); sched(); save();}
+const snapH=()=>{hist.push(JSON.stringify(cur().it)); if(hist.length>60) hist.shift();};
+function finish(){
+  if(chain){ if(chain.pts.length<2){const it=cur().it; it.splice(it.indexOf(chain),1);} chain=null; }
+  corner=null;
+}
+function setTool(t){finish(); tool=t; if(t!='sel') sel=null; $('plHint').textContent=HINT[t];
+  $('plTools').querySelectorAll('.pb').forEach(b=>b.classList.toggle('on',b.dataset.t==t)); ui();}
+
+/* ---------- tap ---------- */
+function tap(p){
+  const x=sn(p.x), y=sn(p.y), it=cur().it;
+  if(tool=='sel'){sel=hit(p);}
+  else if(tool=='x'){const h=hit(p); if(h){snapH(); it.splice(it.indexOf(h),1);}}
+  else if('wgd'.includes(tool)){
+    let q=[x,y];
+    if(chain){const l=chain.pts[chain.pts.length-1]; if(Math.abs(q[0]-l[0])>=Math.abs(q[1]-l[1])) q[1]=l[1]; else q[0]=l[0]; if(q[0]==l[0]&&q[1]==l[1]) return; chain.pts.push(q);}
+    else {snapH(); chain={t:tool,pts:[q]}; it.push(chain);}
+  }
+  else if(tool=='b'||tool=='o'){
+    if(!corner){corner=[x,y];}
+    else{ if(corner[0]==x||corner[1]==y){corner=null;ui();return;} snapH(); const l=prompt('Label (optional)','')||''; const b={t:tool,x1:corner[0],y1:corner[1],x2:x,y2:y,l:l.toUpperCase()}; it.push(b); corner=null; }
+  }
+  else if(tool=='p'||tool=='v'){snapH(); it.push({t:tool,x,y});}
+  else if(tool=='t'){const s=prompt('Text'); if(s){snapH(); it.push({t:'tx',x,y,s});}}
+  else if(tool=='c'){snapH(); const c={t:'c',x,y,a:90,m:'s',d:''}; it.push(c); sel=c; tool='sel'; setTool('sel'); return;}
+  ui();
+}
+
+/* ---------- pointer handling (tap / pan / pinch / drag) ---------- */
+const ptrs=new Map(); let moved=false, st=null, pinch=0, drag=null;
+const pd=()=>{const a=[...ptrs.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);};
+svg.addEventListener('pointerdown',e=>{
+  svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size==1){moved=false; st={x:e.clientX,y:e.clientY,vx:vb.x,vy:vb.y,w:world(e)}; drag=null;
+    if(tool=='sel'&&sel){const h=hit(st.w); if(h===sel){snapH(); drag={o:JSON.stringify(sel)};}}}
+  else if(ptrs.size==2){pinch=pd(); moved=true; drag=null;}
+});
+svg.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId)) return; ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size==2){const d=pd(); if(pinch&&d){zoom(pinch/d); pinch=d;} return;}
+  if(!st) return; const dx=e.clientX-st.x, dy=e.clientY-st.y;
+  if(!moved&&Math.hypot(dx,dy)>7) moved=true;
+  if(!moved) return;
+  const r=svg.getBoundingClientRect();
+  if(drag){const o=shifted(JSON.parse(drag.o),sn(dx/r.width*vb.w),sn(dy/r.height*vb.h)); Object.keys(sel).forEach(k=>delete sel[k]); Object.assign(sel,o); render();}
+  else{vb.x=st.vx-dx/r.width*vb.w; vb.y=st.vy-dy/r.height*vb.h; render();}
+});
+function up(e){
+  const was=ptrs.size; ptrs.delete(e.pointerId);
+  if(was==1&&!moved&&e.type=='pointerup') tap(world(e));
+  else if(drag){ui();}
+  if(!ptrs.size){st=null;drag=null;}
+}
+svg.addEventListener('pointerup',up); svg.addEventListener('pointercancel',up);
+svg.addEventListener('wheel',e=>{e.preventDefault(); zoom(e.deltaY>0?1.15:.87);},{passive:false});
+
+/* ---------- wiring ---------- */
+$('plTools').innerHTML=TOOLS.map(t=>'<button class="pb" data-t="'+t[0]+'">'+t[1]+' '+t[2]+'</button>').join('');
+$('plTools').addEventListener('click',e=>{const b=e.target.closest('[data-t]'); if(b) setTool(b.dataset.t);});
+$('plFin').addEventListener('click',()=>{finish(); ui();});
+$('plUndo').addEventListener('click',()=>{finish(); if(hist.length){cur().it=JSON.parse(hist.pop()); sel=null; ui();}});
+$('plZi').addEventListener('click',()=>zoom(.8)); $('plZo').addEventListener('click',()=>zoom(1.25)); $('plFit').addEventListener('click',fit);
+$('plFull').addEventListener('click',()=>{$('plEd').classList.toggle('full'); setTimeout(fit,60);});
+$('plPhoto').addEventListener('click',()=>{ if(bg){ if(confirm('Remove the background photo?')){bg=null;render();} } else $('plFile').click(); });
+$('plFile').addEventListener('change',e=>{const f=e.target.files[0]; if(f){bg=URL.createObjectURL(f); render();} e.target.value='';});
+window.addEventListener('resize',()=>{if(!$('planView').classList.contains('hidden')) render();});
+$('plProp').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b||!sel) return;
+  if(b.dataset.a!=null){sel.a=+b.dataset.a; ui();}
+  else if(b.dataset.del){snapH(); const it=cur().it; it.splice(it.indexOf(sel),1); sel=null; ui();}
+  else if(b.dataset.edit){const k=sel.t=='tx'?'s':'l'; const v=prompt('Label',sel[k]||''); if(v!=null){sel[k]=sel.t=='tx'?v:v.toUpperCase(); ui();}}
+});
+$('plProp').addEventListener('input',e=>{ if(e.target.id=='plA'&&sel){sel.a=+e.target.value; render(); save();} });
+$('plProp').addEventListener('change',e=>{ if(e.target.id=='plM'&&sel){sel.m=e.target.value; render(); save();} });
+$('plSched').addEventListener('input',e=>{const i=e.target.dataset.d; if(i!=null){cams()[+i].d=e.target.value; save();}});
+$('plSched').addEventListener('click',e=>{const i=e.target.dataset.pick; if(i!=null){sel=cams()[+i]; tool='sel'; setTool('sel');}});
+$('plTabs').addEventListener('click',e=>{const b=e.target.closest('[data-s]'); if(!b) return; finish(); sel=null; hist=[];
+  if(b.dataset.s=='new'){P.sh.push(mk(P.sh.length)); P.cur=P.sh.length-1;} else P.cur=+b.dataset.s; tabs(); fit(); props(); sched(); save();});
+$('plProj').addEventListener('input',e=>{P.proj=e.target.value; save();});
+$('plTitle').addEventListener('input',e=>{cur().title=e.target.value; save();});
+$('plNo').addEventListener('input',e=>{cur().no=e.target.value; save();});
+$('plTitle').addEventListener('change',tabs); 
+$('plDelSheet').addEventListener('click',()=>{ if(P.sh.length>1&&confirm('Delete this sheet?')){P.sh.splice(P.cur,1); P.cur=Math.max(0,P.cur-1); sel=null; hist=[]; tabs(); fit(); props(); sched(); save();} });
+$('plNew').addEventListener('click',()=>{ if(confirm('Clear everything and start a new plan?')){P={proj:'',cur:0,sh:[mk(0)]}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();} });
+$('planBackBtn').addEventListener('click',()=>{$('plEd').classList.remove('full'); showHome();});
+window.openPlans=function(){showView($('planView')); tabs(); setTool('sel'); setTimeout(()=>{fit(); props(); sched();},30);};
+
+/* ---------- PDF export (A3 landscape, SAP COMPUTERS format) ---------- */
+function sheetPdf(d,s,idx,total){
+  const PW=d.internal.pageSize.getWidth(), PH=d.internal.pageSize.getHeight();
+  const navy=[31,42,68], red=[214,40,40], blue=[42,111,219], grey=[107,114,128], lg=[238,240,244];
+  const poly=(pts,st)=>d.lines(pts.slice(1).map((p,i)=>[p[0]-pts[i][0],p[1]-pts[i][1]]),pts[0][0],pts[0][1],[1,1],st,true);
+  const dash=a=>d.setLineDashPattern(a,0);
+  d.setDrawColor(...navy); d.setLineWidth(1.5); d.rect(15,15,PW-30,PH-30); d.setLineWidth(.5); d.rect(20,20,PW-40,PH-40);
+  const by=PH-100; d.setLineWidth(1); d.rect(20,by,PW-40,80); d.setFillColor(...navy); d.rect(20,by,250,80,'F');
+  d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(15); d.text('SAP COMPUTERS',34,by+30);
+  d.setFont('helvetica','normal'); d.setFontSize(9); d.text('Tel : 0337294388',34,by+50); d.text('Email : saptechnology.info@gmail.com',34,by+64);
+  d.setTextColor(...navy); d.setFontSize(8); d.text('PROJECT',285,by+14); d.text('DRAWING TITLE',285,by+48);
+  d.setFont('helvetica','bold'); d.setFontSize(13); d.text(('CCTV INSTALLATION - '+(P.proj||'PROJECT')).toUpperCase(),285,by+28); d.text(('CCTV LAYOUT PLAN - '+(s.title||'')).toUpperCase(),285,by+64);
+  const date=new Date().toLocaleDateString('en-GB').replace(/\//g,'-');
+  [[780,'DRAWING NO.',s.no],[880,'SCALE','N.T.S'],[960,'DATE',date],[1060,'SHEET / REV',(idx+1)+' of '+total+' / A']].forEach(c=>{
+    d.setLineWidth(1); d.line(c[0],by,c[0],by+80); d.setFont('helvetica','normal'); d.setFontSize(7); d.text(c[1],c[0]+6,by+14); d.setFont('helvetica','bold'); d.setFontSize(11); d.text(String(c[2]||''),c[0]+6,by+38);});
+  d.setFont('helvetica','italic'); d.setFontSize(8); d.text('For quotation purposes only. Positions are indicative.',785,by+70);
+
+  /* drawing area */
+  const AX=40, AY=42, AW=740, AH=PH-AY-120, it=s.it, pts=[];
+  it.forEach(i=>{(i.pts||[]).forEach(p=>pts.push(p)); if(i.x1!=null) pts.push([i.x1,i.y1],[i.x2,i.y2]); if(i.x!=null) pts.push([i.x,i.y]);});
+  d.setDrawColor(229,231,235); d.setLineWidth(.3); for(let x=AX;x<=AX+AW;x+=40) d.line(x,AY,x,AY+AH); for(let y=AY;y<=AY+AH;y+=40) d.line(AX,y,AX+AW,y);
+  d.setDrawColor(...grey); d.setLineWidth(.6); d.rect(AX,AY,AW,AH);
+  if(pts.length){
+    const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]), x0=Math.min(...xs)-40, x1=Math.max(...xs)+40, y0=Math.min(...ys)-40, y1=Math.max(...ys)+40;
+    const k=Math.min(AW/(x1-x0),AH/(y1-y0)), ox=AX+(AW-(x1-x0)*k)/2, oy=AY+(AH-(y1-y0)*k)/2, T=(x,y)=>[ox+(x-x0)*k,oy+(y-y0)*k];
+    it.forEach(i=>{ if(i.t=='b'||i.t=='o'){
+      const a=T(Math.min(i.x1,i.x2),Math.min(i.y1,i.y2)), b=T(Math.max(i.x1,i.x2),Math.max(i.y1,i.y2));
+      if(i.t=='b'){d.setFillColor(...lg); d.setDrawColor(0,0,0); d.setLineWidth(2.2); d.rect(a[0],a[1],b[0]-a[0],b[1]-a[1],'FD');}
+      else{d.setDrawColor(...grey); d.setLineWidth(1); dash([5,3]); d.rect(a[0],a[1],b[0]-a[0],b[1]-a[1],'S'); dash([]);}
+      if(i.l){d.setTextColor(...navy); d.setFont('helvetica','bold'); d.setFontSize(8); d.text(i.l,(a[0]+b[0])/2,(a[1]+b[1])/2+3,{align:'center'});}
+    }});
+    it.forEach(i=>{ if(!i.pts) return; const q=i.pts.map(p=>T(p[0],p[1]));
+      for(let j=1;j<q.length;j++){
+        if(i.t=='w'){d.setDrawColor(0,0,0); d.setLineWidth(3); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
+        else if(i.t=='g'){d.setDrawColor(...blue); d.setLineWidth(3); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); d.setDrawColor(255,255,255); d.setLineWidth(1); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
+        else{d.setDrawColor(...grey); d.setLineWidth(1); dash([6,4]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
+      }});
+    it.forEach(i=>{ const c=i.x!=null?T(i.x,i.y):null;
+      if(i.t=='p'){d.setFillColor(255,255,255); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-4,c[1]-4,8,8,'FD');}
+      else if(i.t=='v'){d.setFillColor(...navy); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-14,c[1]-7,28,14,'FD'); d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(6.5); d.text('DVR/NVR',c[0],c[1]+2.3,{align:'center'});}
+      else if(i.t=='tx'){d.setTextColor(...grey); d.setFont('helvetica','bold'); d.setFontSize(10); d.text(i.s,c[0],c[1]);}
+    });
+    let n=0;
+    it.forEach(i=>{ if(i.t!='c') return; n++; const c=T(i.x,i.y), R=26, m=i.m||'s';
+      d.saveGraphicsState(); d.setGState(new d.GState({opacity:.25})); d.setFillColor(...red); d.setDrawColor(...red); d.setLineWidth(.5);
+      const w=a=>{const q=[c]; for(let t=-30;t<=30;t+=10){const r=(a+t)*Math.PI/180; q.push([c[0]+R*Math.cos(r),c[1]+R*Math.sin(r)]);} q.push(c); poly(q,'FD');};
+      if(m=='d') d.circle(c[0],c[1],R-4,'FD'); else {w(i.a); if(m=='2') w(i.a+180);}
+      d.restoreGraphicsState();
+      d.setFillColor(...red); d.setDrawColor(255,255,255); d.setLineWidth(1); d.circle(c[0],c[1],7.5,'FD');
+      d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(n>9?7:8); d.text(String(n),c[0],c[1]+2.6,{align:'center'});
+    });
+  }
+  /* right panel: legend + schedule */
+  const RX=795, RW=PW-RX-25, hd=(y,t)=>{d.setFillColor(...navy); d.rect(RX,y,RW,20,'F'); d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(10); d.text(t,RX+8,y+14);};
+  hd(42,'LEGEND'); d.setFont('helvetica','normal'); d.setFontSize(9); d.setTextColor(0,0,0);
+  let y=84; d.setFillColor(...red); d.setDrawColor(255,255,255); d.circle(RX+18,y,7.5,'FD'); d.text('CCTV camera with field of view',RX+40,y+3);
+  y+=24; d.setFillColor(...navy); d.rect(RX+6,y-7,28,14,'F'); d.text('DVR / NVR recorder',RX+40,y+3);
+  y+=24; d.setDrawColor(0,0,0); d.setLineWidth(3); d.line(RX+6,y,RX+34,y); d.text('Wall',RX+40,y+3);
+  y+=20; d.setDrawColor(...blue); d.line(RX+6,y,RX+34,y); d.setDrawColor(255,255,255); d.setLineWidth(1); d.line(RX+6,y,RX+34,y); d.text('Glass / window / shopfront',RX+40,y+3);
+  y+=20; d.setDrawColor(...grey); d.setLineWidth(1); dash([6,4]); d.line(RX+6,y,RX+34,y); dash([]); d.text('Porch / boundary / open area',RX+40,y+3);
+  y+=34; hd(y,'CAMERA SCHEDULE'); y+=34; d.setFont('helvetica','bold'); d.setFontSize(8); d.text('No.',RX+6,y-6); d.text('Location / Coverage',RX+34,y-6);
+  d.setDrawColor(...grey); d.setLineWidth(.5); d.line(RX,y,RX+RW,y);
+  const cs=s.it.filter(i=>i.t=='c'), dv=s.it.filter(i=>i.t=='v').length, rh=Math.max(11,Math.min(20,(PH-110-y-100)/Math.max(cs.length,1)));
+  d.setFont('helvetica','normal'); d.setFontSize(rh<14?7:8.5); d.setTextColor(0,0,0);
+  cs.forEach((c,i)=>{ y+=rh; d.text('C'+(i+1),RX+8,y-rh/3); d.text(d.splitTextToSize(c.d||'-',RW-40)[0],RX+34,y-rh/3); d.line(RX,y,RX+RW,y); });
+  y+=22; d.setFont('helvetica','bold'); d.setFontSize(9); d.text('Total cameras on this floor: '+cs.length,RX+8,y); y+=14; d.text('Recorder: '+dv+' x DVR/NVR',RX+8,y);
+  y+=22; d.setFontSize(8); d.text('NOTES',RX+8,y); d.setFont('helvetica','normal'); d.setFontSize(7.5);
+  ['1. Drawing is not to scale (N.T.S).','2. Camera positions & angles are indicative;','    final positions to be confirmed on site.','3. Camera type / resolution as per quotation.','4. Cabling route to be decided at installation.'].forEach(t=>{y+=11; d.text(t,RX+8,y);});
+}
+$('plPdf').addEventListener('click',async()=>{
+  const btn=$('plPdf'), err=$('plErr'); err.textContent=''; finish();
+  btn.disabled=true; const lab=btn.textContent; btn.textContent='Preparing…';
+  try{
+    await loadScriptOnce('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const d=new window.jspdf.jsPDF({unit:'pt',format:'a3',orientation:'landscape'});
+    P.sh.forEach((s,i)=>{ if(i) d.addPage(); sheetPdf(d,s,i,P.sh.length); });
+    const name='CCTV_Plans_'+((P.proj||'Project').replace(/[^A-Za-z0-9]+/g,'_'))+'.pdf';
+    const f=new File([d.output('blob')],name,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){ try{await navigator.share({files:[f],title:name});}catch(e){ if(e&&e.name!='AbortError') d.save(name); } }
+    else d.save(name);
+  }catch(e){ err.textContent=(e&&e.message)||'Could not create the PDF.'; }
+  finally{ btn.disabled=false; btn.textContent=lab; }
+});
 })();
 </script>
 </body>
