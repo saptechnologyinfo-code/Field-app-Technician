@@ -280,6 +280,7 @@
   .pl-cv{position:relative;height:58vh;min-height:300px;border:1px solid var(--border);border-radius:10px;overflow:hidden;touch-action:none;background:#fff;}
   #plSvg{width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;}
   .pl-fin{position:absolute;right:10px;bottom:10px;background:var(--success)!important;color:#fff!important;border-color:var(--success)!important;}
+  #plOpt select{width:auto;padding:8px;font-size:.85rem;}
   .pl-hint{font-size:.78rem;color:var(--muted);margin:6px 0;}
   .pl-prop{border-top:1px solid var(--border);margin-top:8px;padding-top:8px;}
   .pl-prop select{width:auto;padding:8px;font-size:.85rem;}
@@ -426,6 +427,7 @@
       <div class="card">
         <h2 style="font-size:1rem;margin-top:0;">CCTV Plan Maker</h2>
         <label>Project / location</label><input id="plProj" placeholder="e.g. Division Secretariat, Katana" />
+        <label>Scale: metres per big grid square (for wire length)</label><input id="plScale" type="number" step="0.5" min="0.5" inputmode="decimal" />
         <div class="pl-tabs" id="plTabs"></div>
         <div class="pl-two"><div><label>Sheet title</label><input id="plTitle" placeholder="GROUND FLOOR" /></div><div><label>Drawing no.</label><input id="plNo" /></div></div>
         <button class="btn-ghost hidden" id="plDelSheet" style="margin-top:10px;">Delete this sheet</button>
@@ -433,6 +435,7 @@
       <div class="card pl-ed" id="plEd">
         <div class="pl-tools" id="plTools"></div>
         <div class="pl-hint" id="plHint"></div>
+        <div class="pl-acts hidden" id="plOpt"></div>
         <div class="pl-cv"><svg id="plSvg" xmlns="http://www.w3.org/2000/svg"></svg><button class="pb pl-fin hidden" id="plFin">✓ Finish line</button></div>
         <div class="pl-acts"><button class="pb" id="plUndo">↶ Undo</button><button class="pb" id="plZi">＋</button><button class="pb" id="plZo">－</button><button class="pb" id="plFit">Fit</button><button class="pb" id="plPhoto">📷 Trace photo</button><button class="pb" id="plFull">⛶ Full screen</button></div>
         <input type="file" id="plFile" accept="image/*" class="hidden" />
@@ -441,6 +444,7 @@
       <div class="card">
         <h2 style="font-size:1rem;margin-top:0;">Camera schedule</h2>
         <div id="plSched"></div>
+        <div id="plWsum" style="margin-top:14px;"></div>
         <button class="btn-primary" id="plPdf">Download PDF (A3)</button>
         <button class="btn-ghost" id="plNew">New plan</button>
         <div class="error" id="plErr"></div>
@@ -2152,8 +2156,8 @@ if(!P.sh[P.cur]) P.cur=0;
 let tool='sel', sel=null, chain=null, corner=null, bg=null, hist=[], vb={x:0,y:0,w:W,h:800};
 const svg=$('plSvg'), cur=()=>P.sh[P.cur], sn=v=>Math.round(v/G)*G;
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){}};
-const TOOLS=[['sel','☝️','Select'],['w','▬','Wall'],['g','═','Glass'],['d','┅','Boundary'],['b','▭','Building'],['o','⬚','Open area'],['p','◻','Pillar'],['c','📷','Camera'],['v','🖥','DVR'],['t','T','Text'],['x','🗑','Erase']];
-const HINT={sel:'Tap an item to select it. Drag a selected item to move it. Drag empty space to pan, pinch to zoom.',w:'Tap points to draw a wall. Lines snap perfectly straight. Press Finish when done.',g:'Tap points to draw glass / window / shopfront.',d:'Tap points to draw a porch or boundary line.',b:'Tap two opposite corners of a building / room.',o:'Tap two opposite corners of an open area (parking, ground).',p:'Tap to place a pillar.',c:'Tap to place a camera, then set its direction below.',v:'Tap to place the DVR / NVR.',t:'Tap to add a text label.',x:'Tap an item to delete it.'};
+const TOOLS=[['sel','☝️','Select'],['w','▬','Wall'],['g','═','Glass'],['d','┅','Boundary'],['b','▭','Building'],['o','⬚','Open area'],['p','◻','Pillar'],['c','📷','Camera'],['v','🖥','DVR'],['t','T','Text'],['r','〰','Wire'],['e','🔌','Equipment'],['m','📏','Measure'],['x','🗑','Erase']];
+const HINT={sel:'Tap an item to select it. Drag a selected item to move it. Drag empty space to pan, pinch to zoom.',w:'Tap points to draw a wall. Lines snap perfectly straight. Press Finish when done.',g:'Tap points to draw glass / window / shopfront.',d:'Tap points to draw a porch or boundary line.',b:'Tap two opposite corners of a building / room.',o:'Tap two opposite corners of an open area (parking, ground).',p:'Tap to place a pillar.',c:'Tap to place a camera, then set its direction below.',v:'Tap to place the DVR / NVR.',t:'Tap to add a text label.',r:'Pick the cable type above, then tap points to lay the wire route. Press Finish when done.',e:'Pick the equipment above, then tap to place it.',m:'Tap two points to measure a distance.',x:'Tap an item to delete it.'};
 
 /* ---------- geometry ---------- */
 function fitVB(){const r=svg.getBoundingClientRect(); if(!r.width) return false; vb.h=vb.w*r.height/r.width; return true;}
@@ -2178,6 +2182,13 @@ function shifted(o,dx,dy){
 }
 const wedge=(x,y,a,R,sp)=>{const r=d=>d*Math.PI/180,p=d=>[x+R*Math.cos(r(d)),y+R*Math.sin(r(d))],A=p(a-sp),B=p(a+sp);return 'M'+x+' '+y+'L'+A[0]+' '+A[1]+'A'+R+' '+R+' 0 0 1 '+B[0]+' '+B[1]+'Z';};
 
+const WK={c:['CCTV cable','#d62828','12 8'],f:['Fiber optic','#7c3aed','2 6'],p:['Power cable','#111827','16 6 3 6'],l:['LAN / UTP','#1e8e5a','10 6']};
+const WP={c:[[214,40,40],[6,4]],f:[[124,58,237],[1,4]],p:[[17,24,39],[8,3,2,3]],l:[[30,142,90],[5,3]]};
+const EQ={sw:['SW','PoE switch'],jb:['JB','Junction box'],pw:['PWR','Power point'],tv:['TV','TV / monitor'],rk:['RACK','Network rack'],ups:['UPS','UPS'],ap:['AP','WiFi AP'],pl:['POLE','Pole'],dr:['DOOR','Door']};
+if(!P.scale) P.scale=5;
+const mpu=()=>(+P.scale||5)/50, plen=p=>{let t=0;for(let j=1;j<p.length;j++)t+=Math.hypot(p[j][0]-p[j-1][0],p[j][1]-p[j-1][1]);return t*mpu();};
+function wsum(){const t={};cur().it.forEach(i=>{if(i.t=='r')t[i.k||'c']=(t[i.k||'c']||0)+plen(i.pts);});const k=Object.keys(t);
+  $('plWsum').innerHTML=k.length?'<h2 style="font-size:1rem;margin:0 0 6px;">Wire estimate (this sheet)</h2>'+k.map(x=>'<div class="meta-row"><span>'+WK[x][0]+'</span><b>'+t[x].toFixed(1)+' m</b></div>').join('')+'<div class="sub" style="margin:6px 0 0;">Add about 10% for slack and bends.</div>':'';}
 /* ---------- render ---------- */
 function render(){
   if(!fitVB()) return;
@@ -2190,8 +2201,9 @@ function render(){
     if(i.pts){
       const pp=i.pts.map(p=>p.join(',')).join(' ');
       if(h) s+='<polyline points="'+pp+'" fill="none" stroke="#f5b82e" stroke-width="14" stroke-opacity=".6" stroke-linecap="round"/>';
-      s+='<polyline points="'+pp+'" fill="none" '+(i.t=='w'?'stroke="#000" stroke-width="5"':i.t=='g'?'stroke="#2a6fdb" stroke-width="5"':'stroke="#6b7280" stroke-width="2.5" stroke-dasharray="12 8"')+'/>';
+      s+='<polyline points="'+pp+'" fill="none" '+(i.t=='w'?'stroke="#000" stroke-width="5"':i.t=='g'?'stroke="#2a6fdb" stroke-width="5"':i.t=='r'?'stroke="'+WK[i.k||'c'][1]+'" stroke-width="3.5" stroke-dasharray="'+WK[i.k||'c'][2]+'"':i.t=='m'?'stroke="#1f6feb" stroke-width="2"':'stroke="#6b7280" stroke-width="2.5" stroke-dasharray="12 8"')+'/>';
       if(i.t=='g') s+='<polyline points="'+pp+'" fill="none" stroke="#fff" stroke-width="1.6"/>';
+      if(i.t=='m'&&i.pts.length>1) s+='<text x="'+((i.pts[0][0]+i.pts[1][0])/2)+'" y="'+((i.pts[0][1]+i.pts[1][1])/2-6)+'" text-anchor="middle" font-size="15" font-weight="700" fill="#1f6feb" font-family="Arial">'+plen(i.pts).toFixed(1)+' m</text>';
     } else if(i.x1!=null){
       const x=Math.min(i.x1,i.x2),y=Math.min(i.y1,i.y2),w=Math.abs(i.x2-i.x1),hh=Math.abs(i.y2-i.y1);
       if(h) s+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+hh+'" fill="none" stroke="#f5b82e" stroke-width="12" stroke-opacity=".6"/>';
@@ -2203,6 +2215,8 @@ function render(){
       s+='<rect x="'+(i.x-20)+'" y="'+(i.y-10)+'" width="40" height="20" fill="#1f2a44" stroke="#000"/><text x="'+i.x+'" y="'+(i.y+4)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#fff" font-family="Arial">DVR/NVR</text>';
     } else if(i.t=='tx'){
       s+='<text x="'+i.x+'" y="'+i.y+'" font-size="18" font-weight="700" fill="#6b7280" font-family="Arial">'+esc(i.s)+'</text>';
+    } else if(i.t=='e'){
+      s+='<rect x="'+(i.x-20)+'" y="'+(i.y-10)+'" width="40" height="20" rx="4" fill="#fff" stroke="#1f2a44" stroke-width="2"/><text x="'+i.x+'" y="'+(i.y+4)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#1f2a44" font-family="Arial">'+EQ[i.k||'sw'][0]+'</text>';
     } else if(i.t=='c'){
       n++;
       const m=i.m||'s', R=62;
@@ -2233,23 +2247,23 @@ function zoom(f){vb.x+=vb.w*(1-f)/2; vb.y+=vb.h*(1-f)/2; vb.w*=f; render();}
 const cams=()=>cur().it.filter(i=>i.t=='c');
 function tabs(){
   $('plTabs').innerHTML=P.sh.map((s,i)=>'<button class="pb'+(i==P.cur?' on':'')+'" data-s="'+i+'">'+esc(s.title||'Sheet '+(i+1))+'</button>').join('')+'<button class="pb" data-s="new">+ Sheet</button>';
-  $('plTitle').value=cur().title; $('plNo').value=cur().no; $('plProj').value=P.proj;
+  $('plTitle').value=cur().title; $('plNo').value=cur().no; $('plProj').value=P.proj; $('plScale').value=P.scale;
   $('plDelSheet').classList.toggle('hidden',P.sh.length<2);
 }
 function props(){
   const el=$('plProp'); if(!sel){el.innerHTML='';return;}
   if(sel.t=='c'){
     const n=cams().indexOf(sel)+1, dirs=[['↖',225],['↑',270],['↗',315],['←',180],['•',-1],['→',0],['↙',135],['↓',90],['↘',45]];
-    el.innerHTML='<div class="pl-prop"><b>Camera '+n+'</b><div class="pl-acts"><select id="plM"><option value="s">Single direction</option><option value="2">Two-way</option><option value="d">Dome 360°</option></select><button class="pb" data-del="1">Delete</button></div>'
+    el.innerHTML='<div class="pl-prop"><b>Camera '+n+'</b><div class="pl-acts"><select id="plM"><option value="s">Single direction</option><option value="2">Two-way</option><option value="d">Dome 360°</option></select><select id="plT"><option value="">Type</option><option>Bullet</option><option>Dome</option><option>PTZ</option></select><button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div>'
       +'<div class="pl-dirs">'+dirs.map(d=>d[1]<0?'<span></span>':'<button class="pb" data-a="'+d[1]+'">'+d[0]+'</button>').join('')+'</div>'
       +'<input type="range" id="plA" min="0" max="359" value="'+Math.round(((sel.a%360)+360)%360)+'"></div>';
-    $('plM').value=sel.m||'s';
+    $('plM').value=sel.m||'s'; $('plT').value=sel.ty||'';
   } else {
-    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+'<button class="pb" data-del="1">Delete</button></div></div>';
+    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+(sel.t=='r'?'<select id="plK">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select><b>'+plen(sel.pts).toFixed(1)+' m</b>':'')+'<button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div></div>'; if($('plK')) $('plK').value=sel.k||'c';
   }
 }
 function sched(){
-  const c=cams();
+  wsum(); const c=cams();
   $('plSched').innerHTML=c.length?c.map((x,i)=>'<div class="pl-row"><span class="pl-n" data-pick="'+i+'">'+(i+1)+'</span><input data-d="'+i+'" value="'+esc(x.d||'')+'" placeholder="Location / coverage"></div>').join(''):'<div class="empty-note">No cameras yet. Use the Camera tool on the plan.</div>';
 }
 function ui(){render(); props(); sched(); save();}
@@ -2258,7 +2272,8 @@ function finish(){
   if(chain){ if(chain.pts.length<2){const it=cur().it; it.splice(it.indexOf(chain),1);} chain=null; }
   corner=null;
 }
-function setTool(t){finish(); tool=t; if(t!='sel') sel=null; $('plHint').textContent=HINT[t];
+function setTool(t){finish(); const pv=tool; tool=t; if(t!='sel') sel=null; $('plHint').textContent=HINT[t];
+  if(t!=pv){const o=$('plOpt'); o.classList.toggle('hidden',t!='r'&&t!='e'); o.innerHTML=t=='r'?'<select id="plOptS">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select>':t=='e'?'<select id="plOptS">'+Object.keys(EQ).map(k=>'<option value="'+k+'">'+EQ[k][1]+'</option>').join('')+'</select>':'';}
   $('plTools').querySelectorAll('.pb').forEach(b=>b.classList.toggle('on',b.dataset.t==t)); ui();}
 
 /* ---------- tap ---------- */
@@ -2266,16 +2281,17 @@ function tap(p){
   const x=sn(p.x), y=sn(p.y), it=cur().it;
   if(tool=='sel'){sel=hit(p);}
   else if(tool=='x'){const h=hit(p); if(h){snapH(); it.splice(it.indexOf(h),1);}}
-  else if('wgd'.includes(tool)){
+  else if('wgdrm'.includes(tool)){
     let q=[x,y];
-    if(chain){const l=chain.pts[chain.pts.length-1]; if(Math.abs(q[0]-l[0])>=Math.abs(q[1]-l[1])) q[1]=l[1]; else q[0]=l[0]; if(q[0]==l[0]&&q[1]==l[1]) return; chain.pts.push(q);}
-    else {snapH(); chain={t:tool,pts:[q]}; it.push(chain);}
+    if(chain){const l=chain.pts[chain.pts.length-1]; if(tool!='r'&&tool!='m'){if(Math.abs(q[0]-l[0])>=Math.abs(q[1]-l[1])) q[1]=l[1]; else q[0]=l[0];} if(q[0]==l[0]&&q[1]==l[1]) return; chain.pts.push(q); if(tool=='m') chain=null;}
+    else {snapH(); chain={t:tool,pts:[q]}; if(tool=='r') chain.k=($('plOptS')||{}).value||'c'; it.push(chain);}
   }
   else if(tool=='b'||tool=='o'){
     if(!corner){corner=[x,y];}
     else{ if(corner[0]==x||corner[1]==y){corner=null;ui();return;} snapH(); const l=prompt('Label (optional)','')||''; const b={t:tool,x1:corner[0],y1:corner[1],x2:x,y2:y,l:l.toUpperCase()}; it.push(b); corner=null; }
   }
   else if(tool=='p'||tool=='v'){snapH(); it.push({t:tool,x,y});}
+  else if(tool=='e'){snapH(); it.push({t:'e',k:($('plOptS')||{}).value||'sw',x,y});}
   else if(tool=='t'){const s=prompt('Text'); if(s){snapH(); it.push({t:'tx',x,y,s});}}
   else if(tool=='c'){snapH(); const c={t:'c',x,y,a:90,m:'s',d:''}; it.push(c); sel=c; tool='sel'; setTool('sel'); return;}
   ui();
@@ -2322,21 +2338,23 @@ window.addEventListener('resize',()=>{if(!$('planView').classList.contains('hidd
 $('plProp').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b||!sel) return;
   if(b.dataset.a!=null){sel.a=+b.dataset.a; ui();}
+  else if(b.dataset.dup){snapH(); const c=shifted(JSON.parse(JSON.stringify(sel)),20,20); cur().it.push(c); sel=c; ui();}
   else if(b.dataset.del){snapH(); const it=cur().it; it.splice(it.indexOf(sel),1); sel=null; ui();}
   else if(b.dataset.edit){const k=sel.t=='tx'?'s':'l'; const v=prompt('Label',sel[k]||''); if(v!=null){sel[k]=sel.t=='tx'?v:v.toUpperCase(); ui();}}
 });
 $('plProp').addEventListener('input',e=>{ if(e.target.id=='plA'&&sel){sel.a=+e.target.value; render(); save();} });
-$('plProp').addEventListener('change',e=>{ if(e.target.id=='plM'&&sel){sel.m=e.target.value; render(); save();} });
+$('plProp').addEventListener('change',e=>{ if(!sel) return; const id=e.target.id; if(id=='plM') sel.m=e.target.value; else if(id=='plT') sel.ty=e.target.value; else if(id=='plK') sel.k=e.target.value; render(); wsum(); save(); });
 $('plSched').addEventListener('input',e=>{const i=e.target.dataset.d; if(i!=null){cams()[+i].d=e.target.value; save();}});
 $('plSched').addEventListener('click',e=>{const i=e.target.dataset.pick; if(i!=null){sel=cams()[+i]; tool='sel'; setTool('sel');}});
 $('plTabs').addEventListener('click',e=>{const b=e.target.closest('[data-s]'); if(!b) return; finish(); sel=null; hist=[];
   if(b.dataset.s=='new'){P.sh.push(mk(P.sh.length)); P.cur=P.sh.length-1;} else P.cur=+b.dataset.s; tabs(); fit(); props(); sched(); save();});
 $('plProj').addEventListener('input',e=>{P.proj=e.target.value; save();});
+$('plScale').addEventListener('input',e=>{P.scale=+e.target.value||5; save(); wsum(); render();});
 $('plTitle').addEventListener('input',e=>{cur().title=e.target.value; save();});
 $('plNo').addEventListener('input',e=>{cur().no=e.target.value; save();});
 $('plTitle').addEventListener('change',tabs); 
 $('plDelSheet').addEventListener('click',()=>{ if(P.sh.length>1&&confirm('Delete this sheet?')){P.sh.splice(P.cur,1); P.cur=Math.max(0,P.cur-1); sel=null; hist=[]; tabs(); fit(); props(); sched(); save();} });
-$('plNew').addEventListener('click',()=>{ if(confirm('Clear everything and start a new plan?')){P={proj:'',cur:0,sh:[mk(0)]}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();} });
+$('plNew').addEventListener('click',()=>{ if(confirm('Clear everything and start a new plan?')){P={proj:'',cur:0,scale:5,sh:[mk(0)]}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();} });
 $('planBackBtn').addEventListener('click',()=>{$('plEd').classList.remove('full'); showHome();});
 window.openPlans=function(){showView($('planView')); tabs(); setTool('sel'); setTimeout(()=>{fit(); props(); sched();},30);};
 
@@ -2375,11 +2393,16 @@ function sheetPdf(d,s,idx,total){
       for(let j=1;j<q.length;j++){
         if(i.t=='w'){d.setDrawColor(0,0,0); d.setLineWidth(3); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
         else if(i.t=='g'){d.setDrawColor(...blue); d.setLineWidth(3); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); d.setDrawColor(255,255,255); d.setLineWidth(1); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
+        else if(i.t=='r'){const w=WP[i.k||'c']; d.setDrawColor(...w[0]); d.setLineWidth(1.6); dash(w[1]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
+        else if(i.t=='m'){d.setDrawColor(...blue); d.setLineWidth(.8); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
         else{d.setDrawColor(...grey); d.setLineWidth(1); dash([6,4]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
-      }});
+      }
+      if(i.t=='m'&&q.length>1){d.setTextColor(...blue); d.setFont('helvetica','bold'); d.setFontSize(8); d.text(plen(i.pts).toFixed(1)+' m',(q[0][0]+q[1][0])/2,(q[0][1]+q[1][1])/2-3,{align:'center'});}
+      });
     it.forEach(i=>{ const c=i.x!=null?T(i.x,i.y):null;
       if(i.t=='p'){d.setFillColor(255,255,255); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-4,c[1]-4,8,8,'FD');}
       else if(i.t=='v'){d.setFillColor(...navy); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-14,c[1]-7,28,14,'FD'); d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(6.5); d.text('DVR/NVR',c[0],c[1]+2.3,{align:'center'});}
+      else if(i.t=='e'){d.setFillColor(255,255,255); d.setDrawColor(...navy); d.setLineWidth(1); d.rect(c[0]-13,c[1]-6,26,12,'FD'); d.setTextColor(...navy); d.setFont('helvetica','bold'); d.setFontSize(6); d.text(EQ[i.k||'sw'][0],c[0],c[1]+2,{align:'center'});}
       else if(i.t=='tx'){d.setTextColor(...grey); d.setFont('helvetica','bold'); d.setFontSize(10); d.text(i.s,c[0],c[1]);}
     });
     let n=0;
@@ -2400,14 +2423,18 @@ function sheetPdf(d,s,idx,total){
   y+=24; d.setDrawColor(0,0,0); d.setLineWidth(3); d.line(RX+6,y,RX+34,y); d.text('Wall',RX+40,y+3);
   y+=20; d.setDrawColor(...blue); d.line(RX+6,y,RX+34,y); d.setDrawColor(255,255,255); d.setLineWidth(1); d.line(RX+6,y,RX+34,y); d.text('Glass / window / shopfront',RX+40,y+3);
   y+=20; d.setDrawColor(...grey); d.setLineWidth(1); dash([6,4]); d.line(RX+6,y,RX+34,y); dash([]); d.text('Porch / boundary / open area',RX+40,y+3);
+  const wt={}; s.it.forEach(i=>{if(i.t=='r')wt[i.k||'c']=(wt[i.k||'c']||0)+plen(i.pts);});
+  Object.keys(wt).forEach(k=>{y+=20; d.setDrawColor(...WP[k][0]); d.setLineWidth(1.6); dash(WP[k][1]); d.line(RX+6,y,RX+34,y); dash([]); d.setTextColor(0,0,0); d.text(WK[k][0]+' (approx. '+wt[k].toFixed(0)+' m)',RX+40,y+3);});
   y+=34; hd(y,'CAMERA SCHEDULE'); y+=34; d.setFont('helvetica','bold'); d.setFontSize(8); d.text('No.',RX+6,y-6); d.text('Location / Coverage',RX+34,y-6);
   d.setDrawColor(...grey); d.setLineWidth(.5); d.line(RX,y,RX+RW,y);
-  const cs=s.it.filter(i=>i.t=='c'), dv=s.it.filter(i=>i.t=='v').length, rh=Math.max(11,Math.min(20,(PH-110-y-100)/Math.max(cs.length,1)));
+  const cs=s.it.filter(i=>i.t=='c'), dv=s.it.filter(i=>i.t=='v').length, rh=Math.max(11,Math.min(20,(PH-110-y-130)/Math.max(cs.length,1)));
   d.setFont('helvetica','normal'); d.setFontSize(rh<14?7:8.5); d.setTextColor(0,0,0);
-  cs.forEach((c,i)=>{ y+=rh; d.text('C'+(i+1),RX+8,y-rh/3); d.text(d.splitTextToSize(c.d||'-',RW-40)[0],RX+34,y-rh/3); d.line(RX,y,RX+RW,y); });
+  cs.forEach((c,i)=>{ y+=rh; d.text('C'+(i+1),RX+8,y-rh/3); d.text(d.splitTextToSize((c.ty?'['+c.ty+'] ':'')+(c.d||'-'),RW-40)[0],RX+34,y-rh/3); d.line(RX,y,RX+RW,y); });
   y+=22; d.setFont('helvetica','bold'); d.setFontSize(9); d.text('Total cameras on this floor: '+cs.length,RX+8,y); y+=14; d.text('Recorder: '+dv+' x DVR/NVR',RX+8,y);
   y+=22; d.setFontSize(8); d.text('NOTES',RX+8,y); d.setFont('helvetica','normal'); d.setFontSize(7.5);
   ['1. Drawing is not to scale (N.T.S).','2. Camera positions & angles are indicative;','    final positions to be confirmed on site.','3. Camera type / resolution as per quotation.','4. Cabling route to be decided at installation.'].forEach(t=>{y+=11; d.text(t,RX+8,y);});
+  const eu=[...new Set(s.it.filter(i=>i.t=='e').map(i=>i.k||'sw'))];
+  if(eu.length){y+=16; d.setFont('helvetica','bold'); d.setFontSize(8); d.text('KEY',RX+8,y); d.setFont('helvetica','normal'); d.setFontSize(7.5); d.splitTextToSize(eu.map(k=>EQ[k][0]+' = '+EQ[k][1]).join(',  '),RW-16).forEach(t=>{y+=11; d.text(t,RX+8,y);});}
 }
 $('plPdf').addEventListener('click',async()=>{
   const btn=$('plPdf'), err=$('plErr'); err.textContent=''; finish();
