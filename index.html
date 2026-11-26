@@ -2249,7 +2249,7 @@ function hit(p){
     const i=it[k]; let d=1e9;
     if(i.pts){for(let j=1;j<i.pts.length;j++) d=Math.min(d,dS(p,i.pts[j-1],i.pts[j]));}
     else if(i.x1!=null){const a=[i.x1,i.y1],b=[i.x2,i.y1],c=[i.x2,i.y2],e=[i.x1,i.y2]; d=Math.min(dS(p,a,b),dS(p,b,c),dS(p,c,e),dS(p,e,a));}
-    else d=Math.hypot(p.x-i.x,p.y-i.y)-(i.t=='v'?14:0);
+    else d=Math.hypot(p.x-i.x,p.y-i.y)-(i.t=='c'?11*zs(i)-11:i.t=='v'?14*zs(i):0);
     if(d<tol) return i;
   }
   return null;
@@ -2260,7 +2260,41 @@ function shifted(o,dx,dy){
   else {o.x+=dx;o.y+=dy;}
   return o;
 }
-const wedge=(x,y,a,R,sp)=>{const r=d=>d*Math.PI/180,p=d=>[x+R*Math.cos(r(d)),y+R*Math.sin(r(d))],A=p(a-sp),B=p(a+sp);return 'M'+x+' '+y+'L'+A[0]+' '+A[1]+'A'+R+' '+R+' 0 0 1 '+B[0]+' '+B[1]+'Z';};
+const wedge=(x,y,a,R,sp)=>{const r=d=>d*Math.PI/180,p=d=>[x+R*Math.cos(r(d)),y+R*Math.sin(r(d))],A=p(a-sp),B=p(a+sp);return 'M'+x+' '+y+'L'+A[0]+' '+A[1]+'A'+R+' '+R+' 0 '+(sp>90?1:0)+' 1 '+B[0]+' '+B[1]+'Z';};
+/* ---------- camera views & item size ----------
+   View 1: a (direction), fa (viewing angle), rg (length).
+   View 2 (two-way cameras only): b, fb, rg2. Missing values = the old defaults. */
+const deg=v=>((v%360)+360)%360, lim=(v,lo,hi,def)=>v==null||v===''||!(+v)?def:Math.max(lo,Math.min(hi,+v));
+const zs=i=>lim(i.sz,.4,4,1);
+const view=(i,k)=>k?{a:deg(i.b!=null?+i.b:+i.a+180),f:lim(i.fb,5,340,60),r:lim(i.rg2,20,600,62)}:{a:deg(+i.a||0),f:lim(i.fa,5,340,60),r:lim(i.rg,20,600,62)};
+const views=i=>i.m=='d'?[view(i,0)]:i.m=='2'?[view(i,0),view(i,1)]:[view(i,0)];
+const pinB=i=>{if(i.m=='2'&&i.b==null) i.b=deg(+i.a+180);}; // so turning view 1 leaves view 2 where it is
+function setView(i,k,o){ pinB(i); const key=k?{a:'b',f:'fb',r:'rg2'}:{a:'a',f:'fa',r:'rg'}; for(const n in o) i[key[n]]=Math.round(n=='a'?deg(o[n]):o[n]); }
+const polar=(i,a,r)=>({x:i.x+r*Math.cos(a*Math.PI/180),y:i.y+r*Math.sin(a*Math.PI/180)});
+function camHandles(i){
+  if(i.m=='d') return [{...polar(i,0,view(i,0).r*.7),k:'rad',v:0}];
+  const out=[];
+  views(i).forEach((w,v)=>{ [-1,1].forEach(s=>out.push({...polar(i,w.a+s*w.f/2,w.r),k:'edge',v,s})); out.push({...polar(i,w.a,w.r),k:'dir',v}); });
+  return out;
+}
+/* h = handle being dragged, p = pointer position. A corner moves only its own edge; the other edge stays. */
+function camDrag(i,h,p,snap){
+  const d=Math.hypot(p.x-i.x,p.y-i.y); let a=Math.atan2(p.y-i.y,p.x-i.x)*180/Math.PI; if(snap) a=Math.round(a/15)*15;
+  const r=Math.max(20,Math.min(600,d));
+  if(h.k=='rad'){ setView(i,0,{r:Math.max(20,Math.min(600,d/.7))}); return; }
+  if(d<8) return;
+  if(h.k=='dir'){ setView(i,h.v,{a,r}); return; }
+  const w=view(i,h.v), fixed=h.fixed!=null?h.fixed:(h.fixed=w.a-h.s*w.f/2); // kept for the whole drag, so rounding cannot creep
+  let f=deg(h.s*(a-fixed)); if(f>340) f=f>350?5:340; f=Math.max(5,f);
+  f=Math.round(f); setView(i,h.v,{f,r}); setView(i,h.v,{a:fixed+h.s*f/2});
+}
+function camSvg(i,n){
+  const z=zs(i); let s='<g fill="#d62828" fill-opacity=".22" stroke="#d62828" stroke-opacity=".6" stroke-width="1">';
+  if(i.m=='d') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="'+(view(i,0).r*.7)+'"/>'; else views(i).forEach(w=>s+='<path d="'+wedge(i.x,i.y,w.a,w.r,w.f/2)+'"/>');
+  return s+'</g><circle cx="'+i.x+'" cy="'+i.y+'" r="'+11*z+'" fill="#d62828" stroke="#fff" stroke-width="'+2*z+'"/><text x="'+i.x+'" y="'+(i.y+4.5*z)+'" text-anchor="middle" font-size="'+13*z+'" font-weight="700" fill="#fff" font-family="Arial">'+n+'</text>';
+}
+/* scales a fixed-size symbol (text, DVR, equipment, pillar) around its own position */
+const sized=(i,s)=>zs(i)==1?s:'<g transform="translate('+i.x+' '+i.y+') scale('+zs(i)+') translate('+(-i.x)+' '+(-i.y)+')">'+s+'</g>';
 
 const WK={c:['CCTV cable','#d62828','12 8'],f:['Fiber optic','#7c3aed','2 6'],p:['Power cable','#111827','16 6 3 6'],l:['LAN / UTP','#1e8e5a','10 6']};
 const WP={c:[[214,40,40],[6,4]],f:[[124,58,237],[1,4]],p:[[17,24,39],[8,3,2,3]],l:[[30,142,90],[5,3]]};
@@ -2277,7 +2311,7 @@ function render(){
   s+='<rect x="-6000" y="-6000" width="14000" height="14000" fill="#fff"/><rect x="-6000" y="-6000" width="14000" height="14000" fill="url(#plg)"/>';
   if(bg) s+='<image href="'+bg+'" x="0" y="0" width="'+W+'" height="800" opacity=".4" preserveAspectRatio="xMidYMid meet"/>';
   it.forEach(i=>{
-    const h=i===sel;
+    const h=i===sel, mark=s.length;
     if(i.pts){
       const pp=i.pts.map(p=>p.join(',')).join(' ');
       if(h) s+='<polyline points="'+pp+'" fill="none" stroke="#f5b82e" stroke-width="14" stroke-opacity=".6" stroke-linecap="round"/>';
@@ -2299,15 +2333,19 @@ function render(){
       s+='<rect x="'+(i.x-20)+'" y="'+(i.y-10)+'" width="40" height="20" rx="4" fill="#fff" stroke="#1f2a44" stroke-width="2"/><text x="'+i.x+'" y="'+(i.y+4)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#1f2a44" font-family="Arial">'+EQ[i.k||'sw'][0]+'</text>';
     } else if(i.t=='c'){
       n++;
-      const m=i.m||'s', R=62;
-      s+='<g fill="#d62828" fill-opacity=".22" stroke="#d62828" stroke-opacity=".6" stroke-width="1">';
-      if(m=='d') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="'+(R*.7)+'"/>';
-      else {s+='<path d="'+wedge(i.x,i.y,i.a,R,30)+'"/>'; if(m=='2') s+='<path d="'+wedge(i.x,i.y,i.a+180,R,30)+'"/>';}
-      s+='</g><circle cx="'+i.x+'" cy="'+i.y+'" r="11" fill="#d62828" stroke="#fff" stroke-width="2"/><text x="'+i.x+'" y="'+(i.y+4.5)+'" text-anchor="middle" font-size="13" font-weight="700" fill="#fff" font-family="Arial">'+n+'</text>';
+      s+=camSvg(i,n);
+    }
+    if(zs(i)!=1&&i.t!='c'){
+      const z=zs(i), part=s.slice(mark);
+      s=s.slice(0,mark)+(i.pts||i.x1!=null?part.replace(/(stroke-width|font-size)="([\d.]+)"/g,(m,k,v)=>k+'="'+v*z+'"'):sized(i,part));
     }
     if(h && i.x!=null && i.t!='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="26" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
-    if(h && i.t=='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="17" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
+    if(h && i.t=='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="'+(11*zs(i)+6)+'" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
   });
+  if(tool=='sel'&&sel&&sel.t=='c'&&it.includes(sel)){
+    const u=vb.w/(svg.clientWidth||400);
+    camHandles(sel).forEach(h=>{ s+=(h.k=='edge'?'<rect x="'+(h.x-6*u)+'" y="'+(h.y-6*u)+'" width="'+12*u+'" height="'+12*u+'"':'<circle cx="'+h.x+'" cy="'+h.y+'" r="'+7*u+'"')+' fill="#fff" stroke="#1f6feb" stroke-width="'+2*u+'"/>'; });
+  }
   if(corner) s+='<circle cx="'+corner[0]+'" cy="'+corner[1]+'" r="7" fill="#1f6feb"/>';
   svg.setAttribute('viewBox',vb.x+' '+vb.y+' '+vb.w+' '+vb.h);
   svg.innerHTML=s;
@@ -2330,16 +2368,24 @@ function tabs(){
   $('plTitle').value=cur().title; $('plNo').value=cur().no; $('plProj').value=P.proj; $('plScale').value=P.scale;
   $('plDelSheet').classList.toggle('hidden',P.sh.length<2);
 }
+let side=0; // which view of a two-way camera the controls change
+const slider=(label,key,lo,hi,val,unit)=>'<label style="display:block;margin-top:8px;font-size:.85rem">'+label+': <b id="plV_'+key+'">'+Math.round(val)+unit+'</b></label><input type="range" data-k="'+key+'" data-u="'+unit+'" min="'+lo+'" max="'+hi+'" value="'+Math.round(val)+'" style="width:100%">';
 function props(){
   const el=$('plProp'); if(!sel){el.innerHTML='';return;}
+  const size=slider('Size','sz',40,400,zs(sel)*100,'%');
   if(sel.t=='c'){
     const n=cams().indexOf(sel)+1, dirs=[['↖',225],['↑',270],['↗',315],['←',180],['•',-1],['→',0],['↙',135],['↓',90],['↘',45]];
+    if(sel.m!='2') side=0;
+    const w=view(sel,side), dome=sel.m=='d';
     el.innerHTML='<div class="pl-prop"><b>Camera '+n+'</b><div class="pl-acts"><select id="plM"><option value="s">Single direction</option><option value="2">Two-way</option><option value="d">Dome 360°</option></select><select id="plT"><option value="">Type</option><option>Bullet</option><option>Dome</option><option>PTZ</option></select><button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div>'
-      +'<div class="pl-dirs">'+dirs.map(d=>d[1]<0?'<span></span>':'<button class="pb" data-a="'+d[1]+'">'+d[0]+'</button>').join('')+'</div>'
-      +'<input type="range" id="plA" min="0" max="359" value="'+Math.round(((sel.a%360)+360)%360)+'"></div>';
+      +(sel.m=='2'?'<div class="pl-acts"><button class="pb'+(side==0?' on':'')+'" data-side="0">View 1</button><button class="pb'+(side==1?' on':'')+'" data-side="1">View 2</button></div>':'')
+      +(dome?slider('Range','r',20,600,w.r,''):'<div class="pl-dirs">'+dirs.map(d=>d[1]<0?'<span></span>':'<button class="pb" data-a="'+d[1]+'">'+d[0]+'</button>').join('')+'</div>'
+        +slider('Direction','a',0,359,w.a,'°')+slider('Viewing angle','f',5,340,w.f,'°')+slider('View length','r',20,600,w.r,'')
+        +'<div class="sub" style="margin:6px 0 0">On the plan, drag a square corner to change that side only, or the round handle to turn the view.</div>')
+      +size+'</div>';
     $('plM').value=sel.m||'s'; $('plT').value=sel.ty||'';
   } else {
-    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+(sel.t=='r'?'<select id="plK">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select><b>'+plen(sel.pts).toFixed(1)+' m</b>':'')+'<button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div></div>'; if($('plK')) $('plK').value=sel.k||'c';
+    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+(sel.t=='r'?'<select id="plK">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select><b>'+plen(sel.pts).toFixed(1)+' m</b>':'')+'<button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div>'+size+'</div>'; if($('plK')) $('plK').value=sel.k||'c';
   }
 }
 function sched(){
@@ -2383,7 +2429,11 @@ const pd=()=>{const a=[...ptrs.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-
 svg.addEventListener('pointerdown',e=>{
   svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size==1){moved=false; st={x:e.clientX,y:e.clientY,vx:vb.x,vy:vb.y,w:world(e)}; drag=null;
-    if(tool=='sel'&&sel){const h=hit(st.w); if(h===sel){snapH(); drag={o:JSON.stringify(sel)};}}}
+    if(tool=='sel'&&sel){
+      const tol=22*vb.w/(svg.clientWidth||400);
+      const g=sel.t=='c'&&cur().it.includes(sel)?camHandles(sel).map(h=>({h,d:Math.hypot(h.x-st.w.x,h.y-st.w.y)})).filter(o=>o.d<tol&&o.d<Math.hypot(sel.x-st.w.x,sel.y-st.w.y)).sort((a,b)=>a.d-b.d)[0]:null;
+      if(g){drag={h:g.h}; side=g.h.v;}
+      else if(hit(st.w)===sel){snapH(); drag={o:JSON.stringify(sel)};}}}
   else if(ptrs.size==2){pinch=pd(); moved=true; drag=null;}
 });
 svg.addEventListener('pointermove',e=>{
@@ -2393,12 +2443,14 @@ svg.addEventListener('pointermove',e=>{
   if(!moved&&Math.hypot(dx,dy)>7) moved=true;
   if(!moved) return;
   const r=svg.getBoundingClientRect();
-  if(drag){const o=shifted(JSON.parse(drag.o),sn(dx/r.width*vb.w),sn(dy/r.height*vb.h)); Object.keys(sel).forEach(k=>delete sel[k]); Object.assign(sel,o); render();}
+  if(drag&&drag.h){ if(!drag.on){snapH(); drag.on=true;} camDrag(sel,drag.h,world(e),false); render(); }
+  else if(drag){const o=shifted(JSON.parse(drag.o),sn(dx/r.width*vb.w),sn(dy/r.height*vb.h)); Object.keys(sel).forEach(k=>delete sel[k]); Object.assign(sel,o); render();}
   else{vb.x=st.vx-dx/r.width*vb.w; vb.y=st.vy-dy/r.height*vb.h; render();}
 });
 function up(e){
   const was=ptrs.size; ptrs.delete(e.pointerId);
-  if(was==1&&!moved&&e.type=='pointerup') tap(world(e));
+  if(was==1&&!moved&&drag&&drag.h){props();}
+  else if(was==1&&!moved&&e.type=='pointerup') tap(world(e));
   else if(drag){ui();}
   if(!ptrs.size){st=null;drag=null;}
 }
@@ -2417,13 +2469,18 @@ $('plFile').addEventListener('change',e=>{const f=e.target.files[0]; if(f){bg=UR
 window.addEventListener('resize',()=>{if(!$('planView').classList.contains('hidden')) render();});
 $('plProp').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b||!sel) return;
-  if(b.dataset.a!=null){sel.a=+b.dataset.a; ui();}
+  if(b.dataset.side!=null){side=+b.dataset.side; props();}
+  else if(b.dataset.a!=null){snapH(); setView(sel,side,{a:+b.dataset.a}); ui();}
   else if(b.dataset.dup){snapH(); const c=shifted(JSON.parse(JSON.stringify(sel)),20,20); cur().it.push(c); sel=c; ui();}
   else if(b.dataset.del){snapH(); const it=cur().it; it.splice(it.indexOf(sel),1); sel=null; ui();}
   else if(b.dataset.edit){const k=sel.t=='tx'?'s':'l'; const v=prompt('Label',sel[k]||''); if(v!=null){sel[k]=sel.t=='tx'?v:v.toUpperCase(); ui();}}
 });
-$('plProp').addEventListener('input',e=>{ if(e.target.id=='plA'&&sel){sel.a=+e.target.value; render(); save();} });
-$('plProp').addEventListener('change',e=>{ if(!sel) return; const id=e.target.id; if(id=='plM') sel.m=e.target.value; else if(id=='plT') sel.ty=e.target.value; else if(id=='plK') sel.k=e.target.value; render(); wsum(); save(); });
+let sliding=false;
+$('plProp').addEventListener('input',e=>{ const k=e.target.dataset.k; if(!k||!sel) return;
+  if(!sliding){snapH(); sliding=true;}
+  const v=+e.target.value; if(k=='sz') sel.sz=v/100; else setView(sel,side,{[k]:v});
+  $('plV_'+k).textContent=v+e.target.dataset.u; render(); save(); });
+$('plProp').addEventListener('change',e=>{ sliding=false; if(!sel) return; const id=e.target.id; if(id=='plM') sel.m=e.target.value; else if(id=='plT') sel.ty=e.target.value; else if(id=='plK') sel.k=e.target.value; render(); wsum(); save(); if(id=='plM') props(); });
 $('plSched').addEventListener('input',e=>{const i=e.target.dataset.d; if(i!=null){cams()[+i].d=e.target.value; save();}});
 $('plSched').addEventListener('click',e=>{const i=e.target.dataset.pick; if(i!=null){sel=cams()[+i]; tool='sel'; setTool('sel');}});
 $('plTabs').addEventListener('click',e=>{const b=e.target.closest('[data-s]'); if(!b) return; finish(); sel=null; hist=[];
@@ -2473,34 +2530,34 @@ function sheetPdf(d,s,idx,total){
     const k=Math.min(AW/(x1-x0),AH/(y1-y0)), ox=AX+(AW-(x1-x0)*k)/2, oy=AY+(AH-(y1-y0)*k)/2, T=(x,y)=>[ox+(x-x0)*k,oy+(y-y0)*k];
     it.forEach(i=>{ if(i.t=='b'||i.t=='o'){
       const a=T(Math.min(i.x1,i.x2),Math.min(i.y1,i.y2)), b=T(Math.max(i.x1,i.x2),Math.max(i.y1,i.y2));
-      if(i.t=='b'){d.setFillColor(...lg); d.setDrawColor(0,0,0); d.setLineWidth(2.2); d.rect(a[0],a[1],b[0]-a[0],b[1]-a[1],'FD');}
-      else{d.setDrawColor(...grey); d.setLineWidth(1); dash([5,3]); d.rect(a[0],a[1],b[0]-a[0],b[1]-a[1],'S'); dash([]);}
-      if(i.l){d.setTextColor(...navy); d.setFont('helvetica','bold'); d.setFontSize(8); d.text(i.l,(a[0]+b[0])/2,(a[1]+b[1])/2+3,{align:'center'});}
+      if(i.t=='b'){d.setFillColor(...lg); d.setDrawColor(0,0,0); d.setLineWidth(2.2*zs(i)); d.rect(a[0],a[1],b[0]-a[0],b[1]-a[1],'FD');}
+      else{d.setDrawColor(...grey); d.setLineWidth(zs(i)); dash([5,3]); d.rect(a[0],a[1],b[0]-a[0],b[1]-a[1],'S'); dash([]);}
+      if(i.l){d.setTextColor(...navy); d.setFont('helvetica','bold'); d.setFontSize(8*zs(i)); d.text(i.l,(a[0]+b[0])/2,(a[1]+b[1])/2+3,{align:'center'});}
     }});
     it.forEach(i=>{ if(!i.pts) return; const q=i.pts.map(p=>T(p[0],p[1]));
       for(let j=1;j<q.length;j++){
-        if(i.t=='w'){d.setDrawColor(0,0,0); d.setLineWidth(3); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
-        else if(i.t=='g'){d.setDrawColor(...blue); d.setLineWidth(3); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); d.setDrawColor(255,255,255); d.setLineWidth(1); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
-        else if(i.t=='r'){const w=WP[i.k||'c']; d.setDrawColor(...w[0]); d.setLineWidth(1.6); dash(w[1]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
-        else if(i.t=='m'){d.setDrawColor(...blue); d.setLineWidth(.8); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
-        else{d.setDrawColor(...grey); d.setLineWidth(1); dash([6,4]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
+        if(i.t=='w'){d.setDrawColor(0,0,0); d.setLineWidth(3*zs(i)); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
+        else if(i.t=='g'){d.setDrawColor(...blue); d.setLineWidth(3*zs(i)); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); d.setDrawColor(255,255,255); d.setLineWidth(zs(i)); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
+        else if(i.t=='r'){const w=WP[i.k||'c']; d.setDrawColor(...w[0]); d.setLineWidth(1.6*zs(i)); dash(w[1]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
+        else if(i.t=='m'){d.setDrawColor(...blue); d.setLineWidth(.8*zs(i)); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}
+        else{d.setDrawColor(...grey); d.setLineWidth(zs(i)); dash([6,4]); d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]); dash([]);}
       }
       if(i.t=='m'&&q.length>1){d.setTextColor(...blue); d.setFont('helvetica','bold'); d.setFontSize(8); d.text(plen(i.pts).toFixed(1)+' m',(q[0][0]+q[1][0])/2,(q[0][1]+q[1][1])/2-3,{align:'center'});}
       });
-    it.forEach(i=>{ const c=i.x!=null?T(i.x,i.y):null;
-      if(i.t=='p'){d.setFillColor(255,255,255); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-4,c[1]-4,8,8,'FD');}
-      else if(i.t=='v'){d.setFillColor(...navy); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-14,c[1]-7,28,14,'FD'); d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(6.5); d.text('DVR/NVR',c[0],c[1]+2.3,{align:'center'});}
-      else if(i.t=='e'){d.setFillColor(255,255,255); d.setDrawColor(...navy); d.setLineWidth(1); d.rect(c[0]-13,c[1]-6,26,12,'FD'); d.setTextColor(...navy); d.setFont('helvetica','bold'); d.setFontSize(6); d.text(EQ[i.k||'sw'][0],c[0],c[1]+2,{align:'center'});}
-      else if(i.t=='tx'){d.setTextColor(...grey); d.setFont('helvetica','bold'); d.setFontSize(10); d.text(i.s,c[0],c[1]);}
+    it.forEach(i=>{ const c=i.x!=null?T(i.x,i.y):null, z=zs(i);
+      if(i.t=='p'){d.setFillColor(255,255,255); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-4*z,c[1]-4*z,8*z,8*z,'FD');}
+      else if(i.t=='v'){d.setFillColor(...navy); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-14*z,c[1]-7*z,28*z,14*z,'FD'); d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(6.5*z); d.text('DVR/NVR',c[0],c[1]+2.3*z,{align:'center'});}
+      else if(i.t=='e'){d.setFillColor(255,255,255); d.setDrawColor(...navy); d.setLineWidth(1); d.rect(c[0]-13*z,c[1]-6*z,26*z,12*z,'FD'); d.setTextColor(...navy); d.setFont('helvetica','bold'); d.setFontSize(6*z); d.text(EQ[i.k||'sw'][0],c[0],c[1]+2*z,{align:'center'});}
+      else if(i.t=='tx'){d.setTextColor(...grey); d.setFont('helvetica','bold'); d.setFontSize(10*z); d.text(i.s,c[0],c[1]);}
     });
     let n=0;
-    it.forEach(i=>{ if(i.t!='c') return; n++; const c=T(i.x,i.y), R=26, m=i.m||'s';
+    it.forEach(i=>{ if(i.t!='c') return; n++; const c=T(i.x,i.y), z=zs(i), m=i.m||'s';
       d.saveGraphicsState(); d.setGState(new d.GState({opacity:.25})); d.setFillColor(...red); d.setDrawColor(...red); d.setLineWidth(.5);
-      const w=a=>{const q=[c]; for(let t=-30;t<=30;t+=10){const r=(a+t)*Math.PI/180; q.push([c[0]+R*Math.cos(r),c[1]+R*Math.sin(r)]);} q.push(c); poly(q,'FD');};
-      if(m=='d') d.circle(c[0],c[1],R-4,'FD'); else {w(i.a); if(m=='2') w(i.a+180);}
+      const w=v=>{const R=26*v.r/62, q=[c], steps=Math.max(2,Math.ceil(v.f/10)); for(let s=0;s<=steps;s++){const r=(v.a-v.f/2+v.f*s/steps)*Math.PI/180; q.push([c[0]+R*Math.cos(r),c[1]+R*Math.sin(r)]);} q.push(c); poly(q,'FD');};
+      if(m=='d') d.circle(c[0],c[1],22*view(i,0).r/62,'FD'); else views(i).forEach(w);
       d.restoreGraphicsState();
-      d.setFillColor(...red); d.setDrawColor(255,255,255); d.setLineWidth(1); d.circle(c[0],c[1],7.5,'FD');
-      d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(n>9?7:8); d.text(String(n),c[0],c[1]+2.6,{align:'center'});
+      d.setFillColor(...red); d.setDrawColor(255,255,255); d.setLineWidth(1); d.circle(c[0],c[1],7.5*z,'FD');
+      d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize((n>9?7:8)*z); d.text(String(n),c[0],c[1]+2.6*z,{align:'center'});
     });
   }
   /* right panel: legend + schedule */
