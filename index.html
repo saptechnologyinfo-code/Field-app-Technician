@@ -2209,7 +2209,28 @@ window.PlanCloud=function(o){
 (function(){
 const $=id=>document.getElementById(id), W=1200, G=10, KEY='plan_draft_v1';
 const mk=i=>({title:['GROUND FLOOR','FIRST FLOOR','SECOND FLOOR','THIRD FLOOR'][i]||'FLOOR '+(i+1),no:'CCTV-0'+(i+1),it:[]});
-let P; try{P=JSON.parse(localStorage.getItem(KEY));}catch(e){}
+/* Checks a plan before it is shown. Also converts sheets saved in the other
+   format (separate wall / glass / porch / camera lists) into this editor's items. */
+function normPlan(d){
+  const bad=()=>{ throw new Error('This plan cannot be opened: its saved data is not in a format this editor understands.'); };
+  if(!d||!Array.isArray(d.sh)) bad();
+  let converted=false;
+  const sh=d.sh.map((s,n)=>{
+    if(s&&Array.isArray(s.it)) return s;
+    if(!s||!Array.isArray(s.w)||!Array.isArray(s.c)) bad();
+    converted=true;
+    const line=t=>l=>({t,pts:[[l[0],l[1]],[l[2],l[3]]]});
+    const it=[].concat(
+      s.w.map(line('w')), (s.g||[]).map(line('g')), (s.p||[]).map(line('d')),
+      (s.t||[]).map(x=>({t:'tx',x:x.x-String(x.s).length*6,y:x.y,s:x.s})),
+      (s.r||[]).map(x=>({t:'v',x:x.x,y:x.y})),
+      s.c.map(c=>({t:'c',x:c.x,y:c.y,a:c.a,m:'s',d:'',ty:['Bullet','Dome','PTZ'].includes(c.k)?c.k:''})));
+    return {title:String(s.title||'PLAN '+(n+1)).replace(/^CCTV LAYOUT PLAN - /i,''),no:s.no||'CCTV-0'+(n+1),it};
+  });
+  const proj=d.proj||String((d.info&&d.info.project)||'').replace(/^CCTV INSTALLATION - /i,'');
+  return {proj,scale:d.scale,sh,converted};
+}
+let P; try{P=JSON.parse(localStorage.getItem(KEY)); if(P&&P.sh&&P.sh.length) P={...P,...normPlan(P)};}catch(e){P=null;}
 if(!P||!P.sh||!P.sh.length) P={proj:'',cur:0,sh:[mk(0)]};
 if(!P.sh[P.cur]) P.cur=0;
 let tool='sel', sel=null, chain=null, corner=null, bg=null, hist=[], vb={x:0,y:0,w:W,h:800};
@@ -2417,7 +2438,7 @@ $('plNew').addEventListener('click',()=>{ if(confirm('Clear everything and start
 $('planBackBtn').addEventListener('click',()=>{$('plEd').classList.remove('full'); showHome();});
 const cloud=PlanCloud({actor:()=>({id:technician.id,name:technician.name,admin:String(technician.role||'').toLowerCase()==='admin'}),
   get:()=>P, data:()=>({proj:P.proj,scale:P.scale,sh:P.sh}),
-  set:(d,mt)=>{P={proj:d.proj||'',cur:0,scale:d.scale||5,sh:(d.sh&&d.sh.length?d.sh:[mk(0)]),cloud:mt||null}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();},
+  set:(raw,mt)=>{const d=normPlan(raw); P={proj:d.proj||'',cur:0,scale:d.scale||5,sh:(d.sh&&d.sh.length?d.sh:[mk(0)]),cloud:mt||null}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();},
   status:t=>{$('plCloudSt').textContent=t;}, named:n=>{$('plProj').value=n;}});
 $('plCloudOpen').addEventListener('click',cloud.list);
 $('plCloudSave').addEventListener('click',async()=>{finish(); await cloud.save('');});
