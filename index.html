@@ -2236,8 +2236,8 @@ if(!P.sh[P.cur]) P.cur=0;
 let tool='sel', sel=null, chain=null, corner=null, bg=null, hist=[], vb={x:0,y:0,w:W,h:800};
 const svg=$('plSvg'), cur=()=>P.sh[P.cur], sn=v=>Math.round(v/G)*G;
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){}};
-const TOOLS=[['sel','☝️','Select'],['w','▬','Wall'],['g','═','Glass'],['d','┅','Boundary'],['b','▭','Building'],['o','⬚','Open area'],['p','◻','Pillar'],['c','📷','Camera'],['v','🖥','DVR'],['t','T','Text'],['r','〰','Wire'],['e','🔌','Equipment'],['m','📏','Measure'],['x','🗑','Erase']];
-const HINT={sel:'Tap an item to select it. Drag a selected item to move it. Drag empty space to pan, pinch to zoom.',w:'Tap points to draw a wall. Lines snap perfectly straight. Press Finish when done.',g:'Tap points to draw glass / window / shopfront.',d:'Tap points to draw a porch or boundary line.',b:'Tap two opposite corners of a building / room.',o:'Tap two opposite corners of an open area (parking, ground).',p:'Tap to place a pillar.',c:'Tap to place a camera, then set its direction below.',v:'Tap to place the DVR / NVR.',t:'Tap to add a text label.',r:'Pick the cable type above, then tap points to lay the wire route. Press Finish when done.',e:'Pick the equipment above, then tap to place it.',m:'Tap two points to measure a distance.',x:'Tap an item to delete it.'};
+const TOOLS=[['sel','☝️','Select'],['w','▬','Wall'],['g','═','Glass'],['d','┅','Boundary'],['b','▭','Building'],['o','⬚','Open area'],['p','◻','Pillar'],['s','✂️','Split'],['k','🚪','Door'],['c','📷','Camera'],['v','🖥','DVR'],['t','T','Text'],['r','〰','Wire'],['e','🔌','Equipment'],['m','📏','Measure'],['x','🗑','Erase']];
+const HINT={sel:'Tap an item to select it. Drag a selected item to move it. Drag empty space to pan, pinch to zoom.',w:'Tap points to draw a wall. Lines snap perfectly straight. Press Finish when done.',g:'Tap points to draw glass / window / shopfront.',d:'Tap points to draw a porch or boundary line.',b:'Tap two opposite corners of a building / room.',o:'Tap two opposite corners of an open area (parking, ground).',p:'Tap to place a pillar.',s:'Choose the direction above, then tap inside a building where the dividing wall should go.',k:'Choose the door type above, then tap on a wall or building side.',c:'Tap to place a camera, then set its direction below.',v:'Tap to place the DVR / NVR.',t:'Tap to add a text label.',r:'Pick the cable type above, then tap points to lay the wire route. Press Finish when done.',e:'Pick the equipment above, then tap to place it.',m:'Tap two points to measure a distance.',x:'Tap an item to delete it.'};
 
 /* ---------- geometry ---------- */
 function fitVB(){const r=svg.getBoundingClientRect(); if(!r.width) return false; vb.h=vb.w*r.height/r.width; return true;}
@@ -2245,13 +2245,15 @@ function world(e){const r=svg.getBoundingClientRect(); return {x:vb.x+(e.clientX
 const dS=(p,a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],l=dx*dx+dy*dy,t=l?Math.max(0,Math.min(1,((p.x-a[0])*dx+(p.y-a[1])*dy)/l)):0;return Math.hypot(p.x-a[0]-t*dx,p.y-a[1]-t*dy);};
 function hit(p){
   const tol=16*vb.w/(svg.clientWidth||400), it=cur().it;
+  for(let k=it.length-1;k>=0;k--){ if(it[k].t=='door'&&doorDist(it[k],p)<tol+4) return it[k]; }
   for(let k=it.length-1;k>=0;k--){
-    const i=it[k]; let d=1e9;
+    const i=it[k]; if(i.t=='door') continue; let d=1e9;
     if(i.pts){for(let j=1;j<i.pts.length;j++) d=Math.min(d,dS(p,i.pts[j-1],i.pts[j]));}
     else if(i.x1!=null){const a=[i.x1,i.y1],b=[i.x2,i.y1],c=[i.x2,i.y2],e=[i.x1,i.y2]; d=Math.min(dS(p,a,b),dS(p,b,c),dS(p,c,e),dS(p,e,a));}
     else d=Math.hypot(p.x-i.x,p.y-i.y)-(i.t=='c'?11*zs(i)-11:i.t=='v'?14*zs(i):0);
     if(d<tol) return i;
   }
+  for(let k=it.length-1;k>=0;k--){ const i=it[k]; if(i.t=='b'&&p.x>Math.min(i.x1,i.x2)&&p.x<Math.max(i.x1,i.x2)&&p.y>Math.min(i.y1,i.y2)&&p.y<Math.max(i.y1,i.y2)) return i; } // tap inside a building part
   return null;
 }
 function shifted(o,dx,dy){
@@ -2295,6 +2297,64 @@ function camSvg(i,n){
 }
 /* scales a fixed-size symbol (text, DVR, equipment, pillar) around its own position */
 const sized=(i,s)=>zs(i)==1?s:'<g transform="translate('+i.x+' '+i.y+') scale('+zs(i)+') translate('+(-i.x)+' '+(-i.y)+')">'+s+'</g>';
+/* ---------- building parts & doors ---------- */
+const DOORS={s:'Single door',d:'Double door',l:'Sliding door',o:'Opening only'};
+const doorW=i=>lim(i.w,20,300,40);
+/* gap = area cut out of the wall, lines = door drawing; both in plan coordinates */
+function doorShape(i){
+  const w=doorW(i), h=w/2, fl=i.fl<0?-1:1, hg=i.hg<0?-1:1, th=(+i.th||5)/2+1, c=Math.cos((+i.a||0)*Math.PI/180), s=Math.sin((+i.a||0)*Math.PI/180);
+  const P=(x,y)=>[i.x+x*c-y*s, i.y+x*s+y*c], L=pts=>pts.map(p=>P(p[0],p[1]));
+  const lines=[L([[-h,-th-2],[-h,th+2]]), L([[h,-th-2],[h,th+2]])]; // door frame ends
+  const leaf=(hx,dir,len)=>{ const arc=[]; for(let t=0;t<=90;t+=7.5){const r=t*Math.PI/180; arc.push([hx+dir*len*Math.cos(r),-fl*len*Math.sin(r)]);} lines.push(L([[hx,0],[hx,-fl*len]]), L(arc)); };
+  if(i.k=='d'){ leaf(-h,1,h); leaf(h,-1,h); }
+  else if(i.k=='l'){ lines.push(L([[-h,-3],[w*.08,-3]]), L([[-w*.08,3],[h,3]])); }
+  else if(i.k!='o') leaf(-hg*h,hg,w);
+  return {gap:L([[-h,-th],[h,-th],[h,th],[-h,th]]), lines};
+}
+const doorSvg=(i,hl)=>{ const d=doorShape(i), pp=a=>a.map(p=>p.join(',')).join(' ');
+  return '<polygon points="'+pp(d.gap)+'" fill="#fff" stroke="none"/>'+d.lines.map(l=>(hl?'<polyline points="'+pp(l)+'" fill="none" stroke="#f5b82e" stroke-width="9" stroke-opacity=".6"/>':'')+'<polyline points="'+pp(l)+'" fill="none" stroke="#1f2a44" stroke-width="2"/>').join(''); };
+const doorDist=(i,p)=>{ const r=(+i.a||0)*Math.PI/180, h=doorW(i)/2, a=[i.x-h*Math.cos(r),i.y-h*Math.sin(r)], b=[i.x+h*Math.cos(r),i.y+h*Math.sin(r)]; return dS(p,a,b); };
+/* moves a door onto the nearest wall / glass / boundary / building side and turns it to match */
+function snapDoor(d,items,tol){
+  let best=null;
+  items.forEach(o=>{ if(o.hd) return; let segs=[];
+    if(o.pts&&'wgd'.includes(o.t)) for(let j=1;j<o.pts.length;j++) segs.push([o.pts[j-1],o.pts[j]]);
+    else if(o.x1!=null){ const A=[o.x1,o.y1],B=[o.x2,o.y1],C=[o.x2,o.y2],D=[o.x1,o.y2]; segs=[[A,B],[B,C],[D,C],[A,D]]; }
+    segs.forEach(([a,b])=>{ const dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy); if(!len) return;
+      let t=((d.x-a[0])*dx+(d.y-a[1])*dy)/(len*len); const raw=Math.max(0,Math.min(1,t)), dist=Math.hypot(d.x-a[0]-raw*dx,d.y-a[1]-raw*dy);
+      if(dist<tol&&(!best||dist<best.dist)){ const m=Math.min(.5,doorW(d)/2/len); t=Math.max(m,Math.min(1-m,t)); // keep the whole door on the wall
+        best={dist,x:a[0]+t*dx,y:a[1]+t*dy,a:deg(Math.atan2(dy,dx)*180/Math.PI)%180,th:(o.t=='b'?4:o.t=='d'||o.t=='o'?2.5:5)*zs(o)}; } });
+  });
+  if(best){ d.x=Math.round(best.x*10)/10; d.y=Math.round(best.y*10)/10; d.a=Math.round(best.a*10)/10; d.th=best.th; }
+  return !!best;
+}
+const newDoor=(x,y,k)=>({t:'door',x,y,a:0,w:40,k:k||'s',fl:1,hg:1});
+/* splits a building / open area into n equal parts, or in two at position "at".
+   dir 'v' = upright dividing wall (parts side by side), 'h' = level wall (parts one above the other) */
+function splitBox(b,dir,n,at){
+  const x0=Math.min(b.x1,b.x2),x1=Math.max(b.x1,b.x2),y0=Math.min(b.y1,b.y2),y1=Math.max(b.y1,b.y2), lo=dir=='v'?x0:y0, hi=dir=='v'?x1:y1;
+  const cuts=at!=null?[at]:Array.from({length:n-1},(_,k)=>Math.round(lo+(hi-lo)*(k+1)/n));
+  const edge=[lo,...cuts,hi];
+  if(edge.some((v,k)=>k&&v-edge[k-1]<20)) return null; // a part would be too small
+  return edge.slice(1).map((v,k)=>({...b,l:k?'':b.l,...(dir=='v'?{x1:edge[k],x2:v,y1:y0,y2:y1}:{x1:x0,x2:x1,y1:edge[k],y2:v})}));
+}
+/* splits the topmost box under the pointer; returns the new parts */
+function splitAt(items,p,mode,sn){
+  for(let k=items.length-1;k>=0;k--){ const b=items[k]; if(b.x1==null||b.hd||b.lk) continue;
+    const w=Math.abs(b.x2-b.x1), h=Math.abs(b.y2-b.y1);
+    if(p.x<=Math.min(b.x1,b.x2)||p.x>=Math.max(b.x1,b.x2)||p.y<=Math.min(b.y1,b.y2)||p.y>=Math.max(b.y1,b.y2)) continue;
+    const dir=mode=='v'||mode=='h'?mode:(w>=h?'v':'h'), parts=splitBox(b,dir,2,sn(dir=='v'?p.x:p.y));
+    if(parts) items.splice(k,1,...parts); return parts;
+  }
+  return null;
+}
+/* doors are drawn above all walls and buildings, but under cameras and symbols added after them */
+function drawOrder(items){
+  const rest=items.filter(i=>i.t!='door'), doors=items.filter(i=>i.t=='door'); let at=0;
+  rest.forEach((i,k)=>{ if(i.pts||i.x1!=null) at=k+1; }); rest.splice(at,0,...doors); return rest;
+}
+const splitButtons=()=>[['v',2],['v',3],['v',4],['h',2],['h',3],['h',4]].map(([d,n])=>'<button class="pb" data-split="'+d+n+'" title="'+n+' parts '+(d=='v'?'side by side':'stacked')+'">'+(d=='v'?'▥ ':'▤ ')+n+'</button>').join('');
+const SPLITS=[['a','Auto (across the long side)'],['v','Upright wall ┃'],['h','Level wall ━']];
 
 const WK={c:['CCTV cable','#d62828','12 8'],f:['Fiber optic','#7c3aed','2 6'],p:['Power cable','#111827','16 6 3 6'],l:['LAN / UTP','#1e8e5a','10 6']};
 const WP={c:[[214,40,40],[6,4]],f:[[124,58,237],[1,4]],p:[[17,24,39],[8,3,2,3]],l:[[30,142,90],[5,3]]};
@@ -2306,13 +2366,14 @@ function wsum(){const t={};cur().it.forEach(i=>{if(i.t=='r')t[i.k||'c']=(t[i.k||
 /* ---------- render ---------- */
 function render(){
   if(!fitVB()) return;
-  const it=cur().it.filter(i=>!i.hd); let n=0, s='';
+  const it=drawOrder(cur().it.filter(i=>!i.hd)); let n=0, s='';
   s+='<defs><pattern id="plg" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#9aa3b2" stroke-opacity=".35" stroke-width=".7"/></pattern></defs>';
   s+='<rect x="-6000" y="-6000" width="14000" height="14000" fill="#fff"/><rect x="-6000" y="-6000" width="14000" height="14000" fill="url(#plg)"/>';
   if(bg) s+='<image href="'+bg+'" x="0" y="0" width="'+W+'" height="800" opacity=".4" preserveAspectRatio="xMidYMid meet"/>';
   it.forEach(i=>{
     const h=i===sel, mark=s.length;
-    if(i.pts){
+    if(i.t=='door'){ s+=doorSvg(i,h); }
+    else if(i.pts){
       const pp=i.pts.map(p=>p.join(',')).join(' ');
       if(h) s+='<polyline points="'+pp+'" fill="none" stroke="#f5b82e" stroke-width="14" stroke-opacity=".6" stroke-linecap="round"/>';
       s+='<polyline points="'+pp+'" fill="none" '+(i.t=='w'?'stroke="#000" stroke-width="5"':i.t=='g'?'stroke="#2a6fdb" stroke-width="5"':i.t=='r'?'stroke="'+WK[i.k||'c'][1]+'" stroke-width="3.5" stroke-dasharray="'+WK[i.k||'c'][2]+'"':i.t=='m'?'stroke="#1f6feb" stroke-width="2"':'stroke="#6b7280" stroke-width="2.5" stroke-dasharray="12 8"')+'/>';
@@ -2335,11 +2396,11 @@ function render(){
       n++;
       s+=camSvg(i,n);
     }
-    if(zs(i)!=1&&i.t!='c'){
+    if(zs(i)!=1&&i.t!='c'&&i.t!='door'){
       const z=zs(i), part=s.slice(mark);
       s=s.slice(0,mark)+(i.pts||i.x1!=null?part.replace(/(stroke-width|font-size)="([\d.]+)"/g,(m,k,v)=>k+'="'+v*z+'"'):sized(i,part));
     }
-    if(h && i.x!=null && i.t!='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="26" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
+    if(h && i.x!=null && i.t!='c' && i.t!='door') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="26" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
     if(h && i.t=='c') s+='<circle cx="'+i.x+'" cy="'+i.y+'" r="'+(11*zs(i)+6)+'" fill="none" stroke="#1f6feb" stroke-width="3" stroke-dasharray="6 4"/>';
   });
   if(tool=='sel'&&sel&&sel.t=='c'&&it.includes(sel)){
@@ -2373,6 +2434,10 @@ const slider=(label,key,lo,hi,val,unit)=>'<label style="display:block;margin-top
 function props(){
   const el=$('plProp'); if(!sel){el.innerHTML='';return;}
   const size=slider('Size','sz',40,400,zs(sel)*100,'%');
+  if(sel.t=='door'){
+    el.innerHTML='<div class="pl-prop"><b>Door</b><div class="pl-acts"><select id="plDT">'+Object.entries(DOORS).map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select><button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div><div class="pl-acts"><button class="pb" data-flip="hg">⇆ Hinge side</button><button class="pb" data-flip="fl">⇅ Opening side</button><button class="pb" data-turn="1">⟳ Turn</button></div>'+slider('Door width','w',20,300,doorW(sel),'')+'</div>';
+    $('plDT').value=sel.k||'s'; return;
+  }
   if(sel.t=='c'){
     const n=cams().indexOf(sel)+1, dirs=[['↖',225],['↑',270],['↗',315],['←',180],['•',-1],['→',0],['↙',135],['↓',90],['↘',45]];
     if(sel.m!='2') side=0;
@@ -2385,7 +2450,7 @@ function props(){
       +size+'</div>';
     $('plM').value=sel.m||'s'; $('plT').value=sel.ty||'';
   } else {
-    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+(sel.t=='r'?'<select id="plK">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select><b>'+plen(sel.pts).toFixed(1)+' m</b>':'')+'<button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div>'+size+'</div>'; if($('plK')) $('plK').value=sel.k||'c';
+    el.innerHTML='<div class="pl-prop"><div class="pl-acts">'+(sel.l!=null||sel.s!=null?'<button class="pb" data-edit="1">Edit label</button>':'')+(sel.t=='r'?'<select id="plK">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select><b>'+plen(sel.pts).toFixed(1)+' m</b>':'')+'<button class="pb" data-dup="1">Duplicate</button><button class="pb" data-del="1">Delete</button></div>'+(sel.x1!=null?'<div class="sub" style="margin:8px 0 4px">Split into parts: ▥ side by side, ▤ stacked</div><div class="pl-acts">'+splitButtons()+'</div>':'')+size+'</div>'; if($('plK')) $('plK').value=sel.k||'c';
   }
 }
 function sched(){
@@ -2399,13 +2464,15 @@ function finish(){
   corner=null;
 }
 function setTool(t){finish(); const pv=tool; tool=t; if(t!='sel') sel=null; $('plHint').textContent=HINT[t];
-  if(t!=pv){const o=$('plOpt'); o.classList.toggle('hidden',t!='r'&&t!='e'); o.innerHTML=t=='r'?'<select id="plOptS">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select>':t=='e'?'<select id="plOptS">'+Object.keys(EQ).map(k=>'<option value="'+k+'">'+EQ[k][1]+'</option>').join('')+'</select>':'';}
+  if(t!=pv){const o=$('plOpt'); o.classList.toggle('hidden',!['r','e','s','k'].includes(t)); const opts=a=>'<select id="plOptS">'+a.map(x=>'<option value="'+x[0]+'">'+x[1]+'</option>').join('')+'</select>'; o.innerHTML=t=='s'?opts(SPLITS):t=='k'?opts(Object.entries(DOORS)):t=='r'?'<select id="plOptS">'+Object.keys(WK).map(k=>'<option value="'+k+'">'+WK[k][0]+'</option>').join('')+'</select>':t=='e'?'<select id="plOptS">'+Object.keys(EQ).map(k=>'<option value="'+k+'">'+EQ[k][1]+'</option>').join('')+'</select>':'';}
   $('plTools').querySelectorAll('.pb').forEach(b=>b.classList.toggle('on',b.dataset.t==t)); ui();}
 
 /* ---------- tap ---------- */
 function tap(p){
   const x=sn(p.x), y=sn(p.y), it=cur().it;
   if(tool=='sel'){sel=hit(p);}
+  else if(tool=='s'){const before=JSON.stringify(it), parts=splitAt(it,p,($('plOptS')||{}).value,sn); if(parts) hist.push(before); else alert('Tap inside a building, not too close to its side.');}
+  else if(tool=='k'){snapH(); const dr=newDoor(p.x,p.y,($('plOptS')||{}).value); if(!snapDoor(dr,it,Math.max(25,22*vb.w/(svg.clientWidth||400)))){dr.x=x; dr.y=y;} it.push(dr); sel=dr; setTool('sel'); return;}
   else if(tool=='x'){const h=hit(p); if(h){snapH(); it.splice(it.indexOf(h),1);}}
   else if('wgdrm'.includes(tool)){
     let q=[x,y];
@@ -2451,7 +2518,7 @@ function up(e){
   const was=ptrs.size; ptrs.delete(e.pointerId);
   if(was==1&&!moved&&drag&&drag.h){props();}
   else if(was==1&&!moved&&e.type=='pointerup') tap(world(e));
-  else if(drag){ui();}
+  else if(drag){ if(moved&&sel&&sel.t=='door') snapDoor(sel,cur().it,Math.max(15,16*vb.w/(svg.clientWidth||400))); ui();}
   if(!ptrs.size){st=null;drag=null;}
 }
 svg.addEventListener('pointerup',up); svg.addEventListener('pointercancel',up);
@@ -2469,7 +2536,10 @@ $('plFile').addEventListener('change',e=>{const f=e.target.files[0]; if(f){bg=UR
 window.addEventListener('resize',()=>{if(!$('planView').classList.contains('hidden')) render();});
 $('plProp').addEventListener('click',e=>{
   const b=e.target.closest('button'); if(!b||!sel) return;
-  if(b.dataset.side!=null){side=+b.dataset.side; props();}
+  if(b.dataset.split){const parts=splitBox(sel,b.dataset.split[0],+b.dataset.split[1]); if(!parts){alert('This building is too small for that many parts.'); return;} snapH(); const it=cur().it; it.splice(it.indexOf(sel),1,...parts); sel=parts[0]; ui(); return;}
+  if(b.dataset.flip){snapH(); sel[b.dataset.flip]=sel[b.dataset.flip]<0?1:-1; ui();}
+  else if(b.dataset.turn){snapH(); sel.a=(sel.a+90)%360; ui();}
+  else if(b.dataset.side!=null){side=+b.dataset.side; props();}
   else if(b.dataset.a!=null){snapH(); setView(sel,side,{a:+b.dataset.a}); ui();}
   else if(b.dataset.dup){snapH(); const c=shifted(JSON.parse(JSON.stringify(sel)),20,20); cur().it.push(c); sel=c; ui();}
   else if(b.dataset.del){snapH(); const it=cur().it; it.splice(it.indexOf(sel),1); sel=null; ui();}
@@ -2478,9 +2548,9 @@ $('plProp').addEventListener('click',e=>{
 let sliding=false;
 $('plProp').addEventListener('input',e=>{ const k=e.target.dataset.k; if(!k||!sel) return;
   if(!sliding){snapH(); sliding=true;}
-  const v=+e.target.value; if(k=='sz') sel.sz=v/100; else setView(sel,side,{[k]:v});
+  const v=+e.target.value; if(k=='sz') sel.sz=v/100; else if(k=='w') sel.w=v; else setView(sel,side,{[k]:v});
   $('plV_'+k).textContent=v+e.target.dataset.u; render(); save(); });
-$('plProp').addEventListener('change',e=>{ sliding=false; if(!sel) return; const id=e.target.id; if(id=='plM') sel.m=e.target.value; else if(id=='plT') sel.ty=e.target.value; else if(id=='plK') sel.k=e.target.value; render(); wsum(); save(); if(id=='plM') props(); });
+$('plProp').addEventListener('change',e=>{ sliding=false; if(!sel) return; const id=e.target.id; if(id=='plDT') sel.k=e.target.value; if(id=='plM') sel.m=e.target.value; else if(id=='plT') sel.ty=e.target.value; else if(id=='plK') sel.k=e.target.value; render(); wsum(); save(); if(id=='plM') props(); });
 $('plSched').addEventListener('input',e=>{const i=e.target.dataset.d; if(i!=null){cams()[+i].d=e.target.value; save();}});
 $('plSched').addEventListener('click',e=>{const i=e.target.dataset.pick; if(i!=null){sel=cams()[+i]; tool='sel'; setTool('sel');}});
 $('plTabs').addEventListener('click',e=>{const b=e.target.closest('[data-s]'); if(!b) return; finish(); sel=null; hist=[];
@@ -2544,6 +2614,9 @@ function sheetPdf(d,s,idx,total){
       }
       if(i.t=='m'&&q.length>1){d.setTextColor(...blue); d.setFont('helvetica','bold'); d.setFontSize(8); d.text(plen(i.pts).toFixed(1)+' m',(q[0][0]+q[1][0])/2,(q[0][1]+q[1][1])/2-3,{align:'center'});}
       });
+    it.forEach(i=>{ if(i.t!='door') return; const sh=doorShape(i), M=a=>a.map(p=>T(p[0],p[1]));
+      d.setFillColor(255,255,255); poly(M(sh.gap),'F'); d.setDrawColor(...navy); d.setLineWidth(1);
+      sh.lines.forEach(l=>{const q=M(l); for(let j=1;j<q.length;j++) d.line(q[j-1][0],q[j-1][1],q[j][0],q[j][1]);}); });
     it.forEach(i=>{ const c=i.x!=null?T(i.x,i.y):null, z=zs(i);
       if(i.t=='p'){d.setFillColor(255,255,255); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-4*z,c[1]-4*z,8*z,8*z,'FD');}
       else if(i.t=='v'){d.setFillColor(...navy); d.setDrawColor(0,0,0); d.setLineWidth(1); d.rect(c[0]-14*z,c[1]-7*z,28*z,14*z,'FD'); d.setTextColor(255); d.setFont('helvetica','bold'); d.setFontSize(6.5*z); d.text('DVR/NVR',c[0],c[1]+2.3*z,{align:'center'});}
@@ -2568,6 +2641,7 @@ function sheetPdf(d,s,idx,total){
   y+=24; d.setDrawColor(0,0,0); d.setLineWidth(3); d.line(RX+6,y,RX+34,y); d.text('Wall',RX+40,y+3);
   y+=20; d.setDrawColor(...blue); d.line(RX+6,y,RX+34,y); d.setDrawColor(255,255,255); d.setLineWidth(1); d.line(RX+6,y,RX+34,y); d.text('Glass / window / shopfront',RX+40,y+3);
   y+=20; d.setDrawColor(...grey); d.setLineWidth(1); dash([6,4]); d.line(RX+6,y,RX+34,y); dash([]); d.text('Porch / boundary / open area',RX+40,y+3);
+  if(s.it.some(i=>i.t=='door')){ y+=20; d.setDrawColor(...navy); d.setLineWidth(1); d.line(RX+12,y+6,RX+12,y-8); d.line(RX+12,y-8,RX+22,y-4); d.line(RX+22,y-4,RX+26,y+6); d.line(RX+6,y+6,RX+12,y+6); d.line(RX+26,y+6,RX+34,y+6); d.setTextColor(0,0,0); d.text('Door',RX+40,y+3); }
   const wt={}; s.it.forEach(i=>{if(i.t=='r')wt[i.k||'c']=(wt[i.k||'c']||0)+plen(i.pts);});
   Object.keys(wt).forEach(k=>{y+=20; d.setDrawColor(...WP[k][0]); d.setLineWidth(1.6); dash(WP[k][1]); d.line(RX+6,y,RX+34,y); dash([]); d.setTextColor(0,0,0); d.text(WK[k][0]+' (approx. '+wt[k].toFixed(0)+' m)',RX+40,y+3);});
   y+=34; hd(y,'CAMERA SCHEDULE'); y+=34; d.setFont('helvetica','bold'); d.setFontSize(8); d.text('No.',RX+6,y-6); d.text('Location / Coverage',RX+34,y-6);
