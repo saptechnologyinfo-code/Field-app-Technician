@@ -428,6 +428,7 @@
         <h2 style="font-size:1rem;margin-top:0;">CCTV Plan Maker</h2>
         <label>Project / location</label><input id="plProj" placeholder="e.g. Division Secretariat, Katana" />
         <label>Scale: metres per big grid square (for wire length)</label><input id="plScale" type="number" step="0.5" min="0.5" inputmode="decimal" />
+        <div class="pl-acts"><button class="pb" id="plCloudOpen">☁ Open</button><button class="pb" id="plCloudSave">☁ Save</button><button class="pb" id="plCloudHist">🕘 History</button></div><div class="pl-hint" id="plCloudSt"></div>
         <div class="pl-tabs" id="plTabs"></div>
         <div class="pl-two"><div><label>Sheet title</label><input id="plTitle" placeholder="GROUND FLOOR" /></div><div><label>Drawing no.</label><input id="plNo" /></div></div>
         <button class="btn-ghost hidden" id="plDelSheet" style="margin-top:10px;">Delete this sheet</button>
@@ -2146,6 +2147,64 @@ async function enterApp(){
 })();
 </script>
 <script>
+/* ===== Plan Cloud: server save / open / version history (shared by phone + desktop) ===== */
+window.PlanCloud=function(o){
+  const E=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  if(!document.getElementById('pcCss')){const st=document.createElement('style'); st.id='pcCss';
+    st.textContent='.pc-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5000;display:none;align-items:center;justify-content:center;padding:12px}.pc-box{background:#fff;color:#1c2530;border-radius:12px;width:min(560px,100%);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.4)}.pc-h{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e1e6ec}.pc-h button{width:auto;margin:0;padding:4px 10px;background:none;border:0;font-size:1.1rem;cursor:pointer;color:#6b7684}.pc-b{overflow:auto;padding:6px 10px 12px}.pc-r{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 8px;border-bottom:1px solid #eef1f5;cursor:pointer;font-size:.9rem}.pc-r:hover{background:#f4f6f9}.pc-r span{display:block;color:#6b7684;font-size:.78rem;margin-top:2px}.pc-r button{width:auto;margin:0;padding:6px 12px;font-size:.8rem;border:1px solid #1f6feb;background:#1f6feb;color:#fff;border-radius:8px;cursor:pointer}.pc-r button[data-del]{background:#fff;color:#c62828;border-color:#c62828}.pc-n{padding:18px;text-align:center;color:#6b7684}.pc-e{color:#c62828}';
+    document.head.appendChild(st);}
+  let box;
+  const me=()=>o.actor();
+  const when=s=>new Date(s).toLocaleString([],{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  function modal(title,html){
+    if(!box){box=document.createElement('div'); box.className='pc-bg'; box.innerHTML='<div class="pc-box"><div class="pc-h"><b></b><button class="pc-x">✕</button></div><div class="pc-b"></div></div>'; document.body.appendChild(box);
+      box.addEventListener('click',e=>{if(e.target==box||e.target.classList.contains('pc-x')) box.style.display='none';});}
+    box.querySelector('b').textContent=title; const b=box.querySelector('.pc-b'); b.innerHTML=html; box.style.display='flex'; return b;
+  }
+  async function list(){
+    const b=modal('Plans on server','<div class="pc-n">Loading…</div>');
+    try{
+      const rows=await gsRun('listPlans');
+      b.innerHTML=rows.length?rows.map(r=>'<div class="pc-r" data-id="'+r.id+'"><div><b>'+E(r.name)+'</b><span>v'+r.version+' · saved by '+E(r.updated_by_name||'—')+' · '+when(r.updated_at)+'</span></div>'+(me().admin?'<button data-del="'+r.id+'">Delete</button>':'')+'</div>').join(''):'<div class="pc-n">No plans saved yet.</div>';
+      b.onclick=async e=>{
+        const del=e.target.dataset.del;
+        if(del){ if(confirm('Delete this plan and ALL its saved versions?')){ try{await gsRun('deletePlan',del,me().id);}catch(x){alert(x.message);} list(); } return; }
+        const r=e.target.closest('.pc-r'); if(!r) return;
+        b.innerHTML='<div class="pc-n">Opening…</div>';
+        try{ const p=await gsRun('getPlan',r.dataset.id); o.set(p.data,{id:p.id,ver:p.version}); box.style.display='none'; o.status('Opened "'+p.name+'" (v'+p.version+')'); }
+        catch(x){ b.innerHTML='<div class="pc-n pc-e">'+E(x.message)+'</div>'; }
+      };
+    }catch(x){ b.innerHTML='<div class="pc-n pc-e">'+E(x.message||'Could not load plans.')+'</div>'; }
+  }
+  async function save(note){
+    const P=o.get(); let nm=(P.proj||'').trim();
+    if(!nm){ nm=(prompt('Plan name (e.g. site name)')||'').trim(); if(!nm) return false; P.proj=nm; if(o.named) o.named(nm); }
+    o.status('Saving…');
+    try{
+      const res=await gsRun('savePlan',P.cloud&&P.cloud.id||null,nm,nm,o.data(),P.cloud?P.cloud.ver:null,me().id,note||'');
+      P.cloud={id:res.id,ver:res.version};
+      o.status('Saved to server — v'+res.version); if(o.saved) o.saved(res);
+      if(res.conflict) alert('Note: '+(res.prev_by||'another user')+' saved this plan while you were editing.\nYour version was saved as v'+res.version+'. Their version is kept in History and can be restored.');
+      return true;
+    }catch(x){ o.status('Save failed'); alert('Could not save to server: '+(x.message||x)+'\nYour work is still stored on this device.'); return false; }
+  }
+  async function history(){
+    const P=o.get(); if(!P.cloud||!P.cloud.id){ alert('Save the plan to the server first.'); return; }
+    const b=modal('Version history','<div class="pc-n">Loading…</div>');
+    try{
+      const rows=await gsRun('listPlanVersions',P.cloud.id);
+      b.innerHTML=rows.map(r=>'<div class="pc-r"><div><b>Version '+r.version+(r.version==P.cloud.ver?' (current)':'')+'</b><span>'+E(r.saved_by_name||'—')+' · '+when(r.saved_at)+(r.note?' · '+E(r.note):'')+'</span></div><button data-v="'+r.version+'">Restore</button></div>').join('')||'<div class="pc-n">No versions.</div>';
+      b.onclick=async e=>{
+        const v=e.target.dataset.v; if(!v) return;
+        if(!confirm('Load version '+v+' into the editor?\nSaving afterwards creates a NEW version — nothing is lost.')) return;
+        try{ const p=await gsRun('getPlanVersion',P.cloud.id,+v); o.set(p.data,{id:P.cloud.id,ver:P.cloud.ver},true); box.style.display='none'; o.status('Version '+v+' loaded — press Save to make it current'); }
+        catch(x){ alert(x.message); }
+      };
+    }catch(x){ b.innerHTML='<div class="pc-n pc-e">'+E(x.message)+'</div>'; }
+  }
+  return {list,save,history};
+};
+
 /* ===== CCTV Plan Maker ===== */
 (function(){
 const $=id=>document.getElementById(id), W=1200, G=10, KEY='plan_draft_v1';
@@ -2192,7 +2251,7 @@ function wsum(){const t={};cur().it.forEach(i=>{if(i.t=='r')t[i.k||'c']=(t[i.k||
 /* ---------- render ---------- */
 function render(){
   if(!fitVB()) return;
-  const it=cur().it; let n=0, s='';
+  const it=cur().it.filter(i=>!i.hd); let n=0, s='';
   s+='<defs><pattern id="plg" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#9aa3b2" stroke-opacity=".35" stroke-width=".7"/></pattern></defs>';
   s+='<rect x="-6000" y="-6000" width="14000" height="14000" fill="#fff"/><rect x="-6000" y="-6000" width="14000" height="14000" fill="url(#plg)"/>';
   if(bg) s+='<image href="'+bg+'" x="0" y="0" width="'+W+'" height="800" opacity=".4" preserveAspectRatio="xMidYMid meet"/>';
@@ -2244,7 +2303,7 @@ function fit(){
 function zoom(f){vb.x+=vb.w*(1-f)/2; vb.y+=vb.h*(1-f)/2; vb.w*=f; render();}
 
 /* ---------- panels ---------- */
-const cams=()=>cur().it.filter(i=>i.t=='c');
+const cams=()=>cur().it.filter(i=>i.t=='c'&&!i.hd);
 function tabs(){
   $('plTabs').innerHTML=P.sh.map((s,i)=>'<button class="pb'+(i==P.cur?' on':'')+'" data-s="'+i+'">'+esc(s.title||'Sheet '+(i+1))+'</button>').join('')+'<button class="pb" data-s="new">+ Sheet</button>';
   $('plTitle').value=cur().title; $('plNo').value=cur().no; $('plProj').value=P.proj; $('plScale').value=P.scale;
@@ -2356,10 +2415,18 @@ $('plTitle').addEventListener('change',tabs);
 $('plDelSheet').addEventListener('click',()=>{ if(P.sh.length>1&&confirm('Delete this sheet?')){P.sh.splice(P.cur,1); P.cur=Math.max(0,P.cur-1); sel=null; hist=[]; tabs(); fit(); props(); sched(); save();} });
 $('plNew').addEventListener('click',()=>{ if(confirm('Clear everything and start a new plan?')){P={proj:'',cur:0,scale:5,sh:[mk(0)]}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();} });
 $('planBackBtn').addEventListener('click',()=>{$('plEd').classList.remove('full'); showHome();});
+const cloud=PlanCloud({actor:()=>({id:technician.id,name:technician.name,admin:String(technician.role||'').toLowerCase()==='admin'}),
+  get:()=>P, data:()=>({proj:P.proj,scale:P.scale,sh:P.sh}),
+  set:(d,mt)=>{P={proj:d.proj||'',cur:0,scale:d.scale||5,sh:(d.sh&&d.sh.length?d.sh:[mk(0)]),cloud:mt||null}; sel=null; hist=[]; bg=null; tabs(); fit(); props(); sched(); save();},
+  status:t=>{$('plCloudSt').textContent=t;}, named:n=>{$('plProj').value=n;}});
+$('plCloudOpen').addEventListener('click',cloud.list);
+$('plCloudSave').addEventListener('click',async()=>{finish(); await cloud.save('');});
+$('plCloudHist').addEventListener('click',cloud.history);
 window.openPlans=function(){showView($('planView')); tabs(); setTool('sel'); setTimeout(()=>{fit(); props(); sched();},30);};
 
 /* ---------- PDF export (A3 landscape, SAP COMPUTERS format) ---------- */
 function sheetPdf(d,s,idx,total){
+  s={...s,it:s.it.filter(i=>!i.hd)};
   const PW=d.internal.pageSize.getWidth(), PH=d.internal.pageSize.getHeight();
   const navy=[31,42,68], red=[214,40,40], blue=[42,111,219], grey=[107,114,128], lg=[238,240,244];
   const poly=(pts,st)=>d.lines(pts.slice(1).map((p,i)=>[p[0]-pts[i][0],p[1]-pts[i][1]]),pts[0][0],pts[0][1],[1,1],st,true);
