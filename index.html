@@ -292,6 +292,7 @@
   .pl-n{flex:none;width:26px;height:26px;border-radius:50%;background:#d62828;color:#fff;font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center;cursor:pointer;}
   .pl-ed.full{position:fixed;inset:0;z-index:450;margin:0;border-radius:0;overflow:auto;display:flex;flex-direction:column;}
   .pl-ed.full .pl-cv{flex:1;height:auto;}
+  .bill-item a{color:#4aa3ff;font-weight:600;}
 </style>
 </head>
 <body>
@@ -343,7 +344,7 @@
           <span class="tile-body"><span class="tile-label">My Jobs</span><i class="tile-bar"></i><span class="tile-desc">View and manage your assigned jobs and tasks.</span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
         </button>
-        <button class="tile t-teal" data-action="soon" data-label="Stock Manage">
+        <button class="tile t-teal" data-action="stock" data-label="Stock Manage">
           <span class="tile-box"><svg viewBox="0 0 200 200" aria-hidden="true"><defs><radialGradient id="gs" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#4fe892"/><stop offset="1" stop-color="#0fa357"/></radialGradient></defs><polygon points="100,40 160,68 100,96 40,68" fill="#f0c88a"/><polygon points="40,68 100,96 100,168 40,140" fill="#d99a52"/><polygon points="100,96 160,68 160,140 100,168" fill="#c07f3a"/><polygon points="64,57 76,51 136,79 124,85" fill="#e3b06c"/><g transform="matrix(1 .4667 0 1 0 0)"><rect x="50" y="88" width="26" height="22" rx="2" fill="#fff"/><path d="M54 93v12M57 93v12M60 93v12M64 93v12M67 93v12M71 93v12" stroke="#1d3557" stroke-width="1.6"/></g><circle cx="142" cy="138" r="34" fill="url(#gs)" stroke="#d9ffe9" stroke-width="3"/><path d="M124 138l12 12 22-26" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <span class="tile-body"><span class="tile-label">Stock Manage</span><i class="tile-bar"></i><span class="tile-desc">Check stock levels, manage parts and inventory.</span></span>
           <span class="go"><svg viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></svg></span>
@@ -386,6 +387,20 @@
         <div class="tile-box" id="sectionIcon"></div>
         <h2 id="sectionTitle">—</h2>
         <div class="sub" style="margin:0;">This section isn't set up yet. It will appear here once it's added.</div>
+      </div>
+    </div>
+
+    <!-- ===================== MY STOCK (view only) ===================== -->
+    <div id="stockView" class="hidden">
+      <div class="detail-page-header"><button class="back-btn" id="stockBackBtn">&larr; Menu</button></div>
+      <div class="card">
+        <h2 style="font-size:1rem;margin-top:0;">Items with me</h2>
+        <div class="sub">These stay on your name until the admin marks them returned or installed at a site.</div>
+        <div class="error" id="stockError"></div>
+        <div id="stockHeld" style="margin-top:8px;"></div>
+        <div class="section-title">Recent history</div>
+        <div id="stockHistory"></div>
+        <button class="btn-ghost" id="stockRefreshBtn">Refresh</button>
       </div>
     </div>
 
@@ -535,6 +550,8 @@
 
         <div class="track-note hidden" id="trackNote"></div>
         <div class="track-note hidden" id="memberNote"></div>
+        <button class="btn-ghost" id="soPdfBtn">⬇ Job summary PDF</button>
+        <div class="error" id="soPdfError"></div>
         <div class="action-stack">
           <button class="btn-primary hidden" id="reachedBtn">I've reached the site</button>
           <button class="btn-primary hidden" id="startWorkBtn">Start job</button>
@@ -575,6 +592,24 @@
 
         <div class="section-title">Fund given (by admin)</div>
         <div id="fundsList" class="sub">No funds recorded yet.</div>
+
+        <div class="section-title">Daily job log</div>
+        <div id="soDaily" class="sub">Loading…</div>
+
+        <div id="soFinalBlock">
+          <div class="section-title">Final customer bill (optional)</div>
+          <div class="track-note hidden" id="soFinishNote">Job finished. If you have the customer's final bill, upload it here. You can also add expense receipts under Purchases / bills above. Both are optional.</div>
+          <label>Bill amount (Rs.)</label>
+          <input id="soFinalAmt" type="number" step="0.01" min="0" />
+          <label>Bill number (optional)</label>
+          <input id="soFinalNo" />
+          <label>Bill photo or PDF (optional)</label>
+          <input type="file" id="soFinalFile" accept="image/*,application/pdf" />
+          <button class="btn-primary" id="soFinalBtn">Upload final bill</button>
+          <button class="btn-ghost hidden" id="soSkipBtn">Skip for now</button>
+          <div class="error" id="soFinalError"></div>
+          <div id="soFinalList" style="margin-top:8px;"></div>
+        </div>
       </div>
 
       <div class="detail-page-header" style="margin-top:4px;">
@@ -1101,7 +1136,7 @@ async function loadJobsList(silent){
 
 /* ---------- Page navigation: home (jobs list) <-> job detail ---------- */
 const leaderboardView = document.getElementById('leaderboardView');
-const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView, leaderboardView, document.getElementById('planView')];
+const ALL_VIEWS = () => [menuView, jobsView, sectionView, jobDetailView, salaryView, leaderboardView, document.getElementById('planView'), document.getElementById('stockView')];
 function showView(view){
   ALL_VIEWS().forEach(v => v.classList.add('hidden'));
   view.classList.remove('hidden');
@@ -1122,6 +1157,7 @@ menuView.querySelectorAll('.tile').forEach(t => t.addEventListener('click', () =
   else if(t.dataset.action === 'salary'){ openSalary(); }
   else if(t.dataset.action === 'leaderboard'){ openLeaderboard(); }
   else if(t.dataset.action === 'plans'){ openPlans(); }
+  else if(t.dataset.action === 'stock'){ openStock(); }
   else showSection(t.querySelector('.tile-label').textContent, t.querySelector('.tile-box').innerHTML);
 }));
 document.getElementById('bellBtn').addEventListener('click', () => menuView.querySelector('[data-action="jobs"]').click());
@@ -1895,6 +1931,7 @@ function openDetail(job){
   loadPhotos();
   loadBills();
   loadFunds();
+  soOpenJob();
   teamJobId = null;
   loadTeam();
 }
@@ -1976,7 +2013,11 @@ startWorkBtn.addEventListener('click', () => runAction(startWorkBtn, 'Start job'
   gsRunQueueable('setJobStatus', selectedJob.id, 'in_progress', technician.id)));
 completeBtn.addEventListener('click', () => {
   if(!confirm('Mark this job as completed?')) return;
-  runAction(completeBtn, 'Complete job', () => gsRunQueueable('setJobStatus', selectedJob.id, 'completed', technician.id));
+  const jobId = selectedJob.id;
+  runAction(completeBtn, 'Complete job', () => gsRunQueueable('setJobStatus', jobId, 'completed', technician.id)).then(() => {
+    // offer the optional bill upload (skippable) once the job is finished
+    if(!statusError.textContent && selectedJob && selectedJob.id === jobId) soAskBill();
+  });
 });
 cancelJobBtn.addEventListener('click', () => {
   if(!confirm('Cancel this job? This can\'t be undone from here.')) return;
@@ -2042,7 +2083,7 @@ async function loadBills(){
     billsList.innerHTML = bills.map(b => `
       <div class="bill-item fade-in">
         <span>${b.description || 'Purchase'} — Rs. ${Number(b.amount).toFixed(2)}</span>
-        ${b.url ? `<a href="#" onclick="openReceipt('${b.url}'); return false;">Receipt</a>` : ''}
+        ${b.url ? `<a href="#" onclick="soOpenFile('${b.url}'); return false;">Receipt</a>` : ''}
       </div>
     `).join('');
   } catch(e){ billsList.innerHTML = ''; }
@@ -2089,6 +2130,176 @@ async function loadFunds(){
     `).join('');
   } catch(e){ fundsList.innerHTML = 'Could not load funds.'; }
 }
+
+/* ---------- Site operations: shared helpers ---------- */
+const soRs = n => 'Rs. ' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const soDate = s => s ? new Date(String(s).length === 10 ? s + 'T00:00:00' : s).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '—';
+const soToday = () => { const d = new Date(), p = n => String(n).padStart(2,'0'); return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()); };
+const soItem = m => m.item_name + (m.serial ? ' · S/N ' + m.serial : '');
+const soQty = m => m.qty + ' ' + (m.unit || '');
+const SO_SRC = { salary:'from salary entry', rate:'estimate from salary settings', manual:'set by admin', none:'no salary entered' };
+
+// Reads a chosen photo (made smaller) or PDF for upload.
+async function soReadFile(file){
+  if(!file) return { base64:null, name:null, type:null };
+  const read = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = () => no(new Error('Could not read the file.')); r.readAsDataURL(blob); });
+  if(file.type === 'application/pdf'){
+    if(file.size > 5 * 1024 * 1024) throw new Error('The PDF is larger than 5 MB.');
+    return { base64: await read(file), name: file.name, type: file.type };
+  }
+  if(!/^image\//.test(file.type)) throw new Error('Choose a photo or a PDF.');
+  const img = await createImageBitmap(file), k = Math.min(1, 1600 / Math.max(img.width, img.height));
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+  const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+  return { base64: c.toDataURL('image/jpeg', .8).split(',')[1], name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg' };
+}
+// Opens a stored photo or PDF in a new tab.
+async function soOpenFile(path){
+  const win = window.open('', '_blank');
+  try{
+    const url = await gsRun('getFileDataUrl', path), parts = url.split(','), type = parts[0].slice(5).split(';')[0];
+    const bytes = Uint8Array.from(atob(parts[1]), ch => ch.charCodeAt(0));
+    const safe = /^(image\/(jpeg|png|webp)|application\/pdf)$/.test(type) ? type : 'application/octet-stream';
+    const link = URL.createObjectURL(new Blob([bytes], { type: safe }));
+    if(win) win.location = link; else { const a = document.createElement('a'); a.href = link; a.download = path.split('/').pop(); a.click(); }
+  } catch(e){ if(win) win.close(); alert('Could not open the file: ' + e.message); }
+}
+function soScript(src){
+  return new Promise((ok, no) => {
+    let s = document.querySelector('script[src="' + src + '"]');
+    if(s && s.dataset.done) return ok();
+    if(s && !s.dataset.so){ s.remove(); s = null; } // left over from an earlier attempt
+    if(!s){ s = document.createElement('script'); s.src = src; s.dataset.so = '1'; document.head.appendChild(s); }
+    s.addEventListener('load', () => { s.dataset.done = '1'; ok(); });
+    s.addEventListener('error', () => { s.remove(); no(new Error('Could not load the PDF library. Check your connection.')); });
+  });
+}
+
+/* Job summary PDF (A4). The server leaves out salary and prices for technicians. */
+async function soJobPdf(actorId, jobId){
+  const d = await gsRun('getJobSummary', actorId, jobId);
+  if(!(window.jspdf && window.jspdf.jsPDF)) await soScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  if(!window.jspdf.jsPDF.API.autoTable) await soScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js');
+  const doc = new window.jspdf.jsPDF({ unit:'pt', format:'a4' }), j = d.job, t = d.totals, A = d.is_admin;
+  const money = n => Number(n || 0).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  const when = s => s ? new Date(s).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+  doc.setFillColor(31,42,68); doc.rect(0,0,595,62,'F'); doc.setTextColor(255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.text('SAP COMPUTERS', 40, 28);
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.text('Job Summary  ·  ' + (j.job_number || ''), 40, 47);
+  doc.setFontSize(8); doc.text('Printed ' + when(new Date()), 555, 47, { align:'right' }); doc.setTextColor(0);
+  let y = 76;
+  const table = (title, head, body, o = {}) => {
+    if(!body.length) return;
+    if(y > 740){ doc.addPage(); y = 40; }
+    if(title){ doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(31,42,68); doc.text(title, 40, y + 12); y += 18; }
+    const right = {}; (o.right || []).forEach(i => right[i] = { halign:'right' });
+    doc.autoTable({ startY:y, head: head ? [head] : undefined, body, foot: o.foot ? [o.foot] : undefined, showFoot:'lastPage',
+      margin:{ left:40, right:40, bottom:40 }, theme:'grid', styles:{ fontSize:8.5, cellPadding:4, overflow:'linebreak' },
+      headStyles:{ fillColor:[31,42,68] }, footStyles:{ fillColor:[238,240,244], textColor:20, fontStyle:'bold' }, columnStyles: Object.assign(right, o.cols || {}),
+      didParseCell: c => { if((o.right || []).includes(c.column.index)) c.cell.styles.halign = 'right'; } });
+    y = doc.lastAutoTable.finalY + 12;
+  };
+  table(null, null, [
+    ['Site', j.site_name || '—', 'Branch', j.branch_name || '—'],
+    ['Status', String(j.status || '').replace('_',' ').toUpperCase(), 'Lead technician', j.technician_name || '—'],
+    ['Started', when(j.start_time), 'Reached', when(j.reach_time)],
+    ['Team', (j.members || []).map(m => m.name).filter(Boolean).join(', ') || '—', 'Job photos', String(d.photo_count)],
+  ], { cols:{ 0:{ fontStyle:'bold', cellWidth:75 }, 2:{ fontStyle:'bold', cellWidth:80 } } });
+
+  const sums = [['Cash funds given', money(t.funds)], ['Expenses (bills)', money(t.expenses)], ['Cash balance (funds - expenses)', money(t.balance)]];
+  if(A) sums.push(['Technician salary (charged separately)', money(t.salary)], ['Installed accessories', money(t.materials)], ['TOTAL SITE COST (expenses + salary + accessories)', money(t.site_cost)]);
+  if(d.final_bills.length){ sums.push(['Final customer bill', money(t.final_bill)]); if(A) sums.push(['Profit / loss (bill - site cost)', money(t.profit)]); }
+  table('Summary (Rs.)', null, sums, { right:[1], cols:{ 1:{ cellWidth:110 } } });
+
+  table('Daily notes', ['Date','Note'], d.notes.map(n => [soDate(n.work_date), n.note]), { cols:{ 0:{ cellWidth:75 } } });
+  table('Technician attendance' + (A ? ' and salary cost' : ''),
+    ['Date','Technician','Note'].concat(A ? ['Salary basis','Amount (Rs.)'] : []),
+    d.attendance.map(a => [soDate(a.date), a.technician, a.note || ''].concat(A ? [SO_SRC[a.source] || '', money(a.amount)] : [])),
+    A ? { right:[4], foot:['Total','','','', money(t.salary)] } : {});
+  const stockRows = list => list.map(m => [soDate(m.date), m.item, m.serial || '', m.qty + ' ' + m.unit, m.technician || ''].concat(A ? [money(m.amount)] : []));
+  const stockHead = ['Date','Item','Serial no.','Qty','Technician'].concat(A ? ['Amount (Rs.)'] : []);
+  table('Accessories issued to technicians for this job', stockHead, stockRows(d.issued), A ? { right:[5] } : {});
+  table('Accessories installed at this site', stockHead, stockRows(d.installed), A ? { right:[5], foot:['Total','','','','', money(t.materials)] } : {});
+  table('Cash funds', ['Date','Note','Amount (Rs.)'], d.funds.map(f => [soDate(f.created_at), f.note || 'Fund given', money(f.amount)]), { right:[2], foot:['Total','', money(t.funds)] });
+  table('Expenses', ['Date','Description','Receipt','Amount (Rs.)'], d.bills.map(b => [b.created_at ? soDate(b.created_at) : '—', b.description || 'Purchase', b.url ? 'Yes' : 'No', money(b.amount)]), { right:[3], foot:['Total','','', money(t.expenses)] });
+  table('Final customer bill', ['Date','Bill no.','File','Amount (Rs.)'], d.final_bills.map(b => [soDate(b.created_at), b.bill_no || '—', b.file_path ? 'Attached' : 'No', money(b.amount)]), { right:[3] });
+  const pages = doc.getNumberOfPages();
+  for(let p = 1; p <= pages; p++){ doc.setPage(p); doc.setFontSize(8); doc.setTextColor(120); doc.text('Page ' + p + ' of ' + pages, 555, 820, { align:'right' }); }
+  doc.save('Job-' + String(j.job_number || 'summary').replace(/[^\w-]+/g,'_') + '-summary.pdf');
+}
+
+/* ---------- Daily job log, final bill, PDF, My Stock ---------- */
+const soEl = id => document.getElementById(id);
+function soOpenJob(){
+  ['soFinalAmt','soFinalNo','soFinalFile'].forEach(i => soEl(i).value = '');
+  soEl('soFinalError').textContent = soEl('soPdfError').textContent = '';
+  soEl('soFinishNote').classList.add('hidden'); soEl('soSkipBtn').classList.add('hidden');
+  soEl('soDaily').textContent = soEl('soFinalList').textContent = 'Loading…';
+  soLoadJob();
+}
+async function soLoadJob(){
+  const id = selectedJob.id;
+  try{
+    const d = await gsRun('getJobSummary', technician.id, id);
+    if(!selectedJob || selectedJob.id !== id) return;
+    const days = [...new Set(d.attendance.map(a => a.date).concat(d.notes.map(n => n.work_date)))].sort().reverse();
+    const line = m => esc(m.item) + (m.serial ? ' · S/N ' + esc(m.serial) : '') + ' × ' + m.qty + ' ' + esc(m.unit) + ' <span class="sub">(' + esc(m.technician || '') + ', ' + soDate(m.date) + ')</span>';
+    soEl('soDaily').innerHTML = (days.length ? days.map(day => {
+      const note = d.notes.find(n => n.work_date === day), who = d.attendance.filter(a => a.date === day).map(a => a.technician);
+      return '<div class="bill-item" style="display:block;"><b>' + soDate(day) + '</b>' + (who.length ? '<div>Attended: ' + esc(who.join(', ')) + '</div>' : '') + (note ? '<div style="white-space:pre-wrap;">' + esc(note.note) + '</div>' : '') + '</div>';
+    }).join('') : '<div>No daily updates yet. The admin adds them.</div>') +
+      (d.issued.length ? '<p><b>Accessories issued for this job</b></p>' + d.issued.map(m => '<div>' + line(m) + '</div>').join('') : '') +
+      (d.installed.length ? '<p><b>Installed at this site</b></p>' + d.installed.map(m => '<div>' + line(m) + '</div>').join('') : '');
+    soEl('soFinalList').innerHTML = d.final_bills.length ? d.final_bills.map(b => '<div class="bill-item"><span>' + esc(b.bill_no || 'Final bill') + ' — ' + soRs(b.amount) + '</span>' +
+      (b.file_path ? '<a href="#" data-sofile="' + esc(b.file_path) + '">View</a>' : '') + '</div>').join('') : '<div class="sub">Not uploaded yet.</div>';
+  } catch(e){
+    if(!selectedJob || selectedJob.id !== id) return;
+    soEl('soDaily').textContent = soEl('soFinalList').textContent = e.message || 'Could not load.';
+  }
+}
+function soAskBill(){
+  soEl('soFinishNote').classList.remove('hidden'); soEl('soSkipBtn').classList.remove('hidden');
+  soEl('soFinalBlock').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+soEl('soSkipBtn').addEventListener('click', () => {
+  soEl('soFinishNote').classList.add('hidden'); soEl('soSkipBtn').classList.add('hidden'); window.scrollTo({ top:0, behavior:'smooth' });
+});
+soEl('soFinalList').addEventListener('click', e => { const a = e.target.closest('[data-sofile]'); if(a){ e.preventDefault(); soOpenFile(a.dataset.sofile); } });
+soEl('soFinalBtn').addEventListener('click', async () => {
+  const btn = soEl('soFinalBtn'), err = soEl('soFinalError'), id = selectedJob.id;
+  err.textContent = '';
+  if(soEl('soFinalAmt').value.trim() === ''){ err.textContent = 'Enter the bill amount.'; return; }
+  setLoading(btn, true, 'Upload final bill');
+  try{
+    const f = await soReadFile(soEl('soFinalFile').files[0]);
+    await gsRun('addFinalBill', technician.id, id, soEl('soFinalAmt').value.trim(), soEl('soFinalNo').value.trim(), f.base64, f.name, f.type);
+    ['soFinalAmt','soFinalNo','soFinalFile'].forEach(i => soEl(i).value = '');
+    soEl('soFinishNote').classList.add('hidden'); soEl('soSkipBtn').classList.add('hidden');
+    await soLoadJob();
+  } catch(e){ err.textContent = e.message || 'Upload failed.'; }
+  finally{ setLoading(btn, false, 'Upload final bill'); }
+});
+soEl('soPdfBtn').addEventListener('click', async () => {
+  const btn = soEl('soPdfBtn'); soEl('soPdfError').textContent = ''; btn.disabled = true;
+  try{ await soJobPdf(technician.id, selectedJob.id); }
+  catch(e){ soEl('soPdfError').textContent = e.message || 'Could not create the PDF.'; }
+  finally{ btn.disabled = false; }
+});
+async function openStock(){
+  showView(soEl('stockView'));
+  soEl('stockError').textContent = ''; soEl('stockHeld').innerHTML = skeletonLines(2); soEl('stockHistory').innerHTML = '';
+  try{
+    const d = await gsRun('listMyStock', technician.id);
+    const name = m => esc(m.item_name) + (m.serial ? '<div class="sub" style="margin:0;">S/N ' + esc(m.serial) + '</div>' : '');
+    soEl('stockHeld').innerHTML = d.holdings.length ? d.holdings.map(h => '<div class="bill-item"><span>' + name(h) + '<div class="sub" style="margin:0;">Since ' + soDate(h.since) +
+      (h.jobs.length ? ' · job ' + esc(h.jobs.map(j => j.number).join(', ')) : '') + '</div></span><b>' + h.qty + ' ' + esc(h.unit) + '</b></div>').join('') : '<div class="sub">You are not holding any items.</div>';
+    const label = { issue:'Issued to you', return:'Returned', install:'Installed' };
+    soEl('stockHistory').innerHTML = d.history.length ? d.history.map(m => '<div class="bill-item"><span>' + name(m) + '<div class="sub" style="margin:0;">' + (label[m.move_type] || m.move_type) + ' · ' + soDate(m.created_at) +
+      (m.job_number ? ' · job ' + esc(m.job_number) : '') + '</div></span><b>' + m.qty + ' ' + esc(m.unit) + '</b></div>').join('') : '<div class="sub">No history yet.</div>';
+  } catch(e){ soEl('stockHeld').innerHTML = ''; soEl('stockError').textContent = e.message || 'Could not load your stock.'; }
+}
+soEl('stockBackBtn').addEventListener('click', showHome);
+soEl('stockRefreshBtn').addEventListener('click', openStock);
 
 /* ---------- Boot ---------- */
 async function enterApp(){
